@@ -291,6 +291,38 @@ export const DB = {
     return snapshot.size;
   },
 
+  async clearQueue() {
+    const snapshot = await db.collection('queue').get();
+    
+    const batch = db.batch();
+    snapshot.docs.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+    
+    await batch.commit();
+    
+    return snapshot.size;
+  },
+
+  async resetAllUsers() {
+    const snapshot = await db.collection('users').get();
+    
+    const batch = db.batch();
+    snapshot.docs.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+    
+    await batch.commit();
+    
+    // Сбросить счётчики
+    await this.updateSystemSettings({
+      total_users: 0,
+      first_10_count: 0
+    });
+    
+    return snapshot.size;
+  },
+
   // === SETTINGS ===
   async getSystemSettings() {
     const doc = await db.collection('settings').doc('system').get();

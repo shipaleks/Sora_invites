@@ -25,6 +25,12 @@ export function registerTextHandlers(bot) {
         if (text === '/clearpool') {
           return handleClearPool(ctx, user?.language || 'ru');
         }
+        if (text === '/clearqueue') {
+          return handleClearQueue(ctx, user?.language || 'ru');
+        }
+        if (text === '/resetall') {
+          return handleResetAll(ctx, user?.language || 'ru');
+        }
         if (text.startsWith('/finduser ')) {
           return handleFindUser(ctx, text);
         }
@@ -268,6 +274,20 @@ async function handleClearPool(ctx, language) {
     : `✅ Очищено ${count} ${pluralize(count, 'код', 'кода', 'кодов', language)} из пула`;
   
   return ctx.reply(msg);
+}
+
+async function handleClearQueue(ctx, language) {
+  const count = await DB.clearQueue();
+  
+  const msg = language === 'en'
+    ? `✅ Cleared ${count} user${count !== 1 ? 's' : ''} from queue`
+    : `✅ Очищено ${count} ${pluralize(count, 'пользователь', 'пользователя', 'пользователей', language)} из очереди`;
+  
+  return ctx.reply(msg);
+}
+
+async function handleResetAll(ctx, language) {
+  await ctx.reply('⚠️ Это удалит ВСЕ данные (пользователей, очередь, коды). Уверен? Отправь /confirmedreset');
 }
 
 async function handleFindUser(ctx, text) {
