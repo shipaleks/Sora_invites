@@ -330,7 +330,8 @@ Agree?`,
 
 ⏰ Deadline: 48h
 
-💝 Subscribe: ${config.telegram.channel}`,
+💝 Follow my research on AI & Sora: ${config.telegram.twitterEn}
+Head of Research @ Anthropic | AI Safety & Creative Tools`,
 
     waitingForCodes: (codesRequired) => `📨 **Sending Codes**
 
@@ -437,11 +438,11 @@ Click /start to begin!`,
 1. Request an invite
 2. Receive a code for Sora
 3. Register on sora.com (with VPN 🇺🇸)
-4. Return some of your codes to the bot
+4. Return your code to the bot
 5. Help others get access!
 
-**Questions?**
-Write to ${config.telegram.channel}`,
+**Learn more about AI:**
+Follow my research: ${config.telegram.twitterEn}`,
 
     adminHelp: `🔧 **Admin Commands:**
 
