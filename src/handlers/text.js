@@ -133,38 +133,28 @@ async function handleCodeSubmission(ctx, user) {
   const codesToAdd = validCodes.slice(0, neededCodes);
   
   try {
-    // Добавить в пул (возвращает количество реально добавленных)
-    const addedCount = await DB.addCodesToPool(codesToAdd, user.telegram_id);
-    
-    if (addedCount === 0) {
-      const msg = user.language === 'en'
-        ? '❌ All codes are duplicates (already in pool)'
-        : '❌ Все коды дубликаты (уже есть в пуле)';
-      return ctx.reply(msg, { parse_mode: 'Markdown' });
-    }
-    
-    const newTotal = user.codes_returned + addedCount;
+    // Сохраняем код временно для выбора количества использований
+    const code = codesToAdd[0];
     
     await DB.updateUser(user.telegram_id, {
-      codes_returned: newTotal,
-      codes_submitted: [...(user.codes_submitted || []), ...codesToAdd],
-      status: newTotal >= codesRequired ? 'completed' : 'received',
-      awaiting_codes: false
+      pending_code: code,
+      awaiting_codes: false,
+      awaiting_usage_choice: true
     });
     
-    await ctx.reply(MESSAGES.codesReceived(newTotal), {
-      parse_mode: 'Markdown'
+    const MESSAGES = getMessages(user.language || 'ru');
+    
+    await ctx.reply(MESSAGES.chooseUsageCount(code), {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: MESSAGES.buttons.usage1, callback_data: 'usage_1' }],
+          [{ text: MESSAGES.buttons.usage2, callback_data: 'usage_2' }],
+          [{ text: MESSAGES.buttons.usage3, callback_data: 'usage_3' }],
+          [{ text: MESSAGES.buttons.usage4, callback_data: 'usage_4' }]
+        ]
+      }
     });
-
-    // Уведомление админу
-    try {
-      await ctx.telegram.sendMessage(
-        config.telegram.adminId,
-        `✅ Коды получены от @${user.username}: ${codesToAdd.length} шт.`
-      );
-    } catch (error) {
-      console.error('Admin notification failed:', error.message);
-    }
   } catch (error) {
     console.error('Error processing codes:', error);
     const msg = user.language === 'en'

@@ -206,6 +206,81 @@ export function registerCallbacks(bot) {
     });
   });
 
+  // Выбор количества использований
+  bot.action(/^usage_([1-4])$/, async (ctx) => {
+    await ctx.answerCbQuery();
+    
+    const userId = ctx.from.id;
+    const user = await DB.getUser(userId);
+    const usageCount = parseInt(ctx.match[1]);
+    
+    const MESSAGES = getMessages(user?.language || 'ru');
+    
+    if (!user || !user.pending_code) {
+      return ctx.reply('❌ Ошибка: код не найден');
+    }
+    
+    const code = user.pending_code;
+    
+    try {
+      // Добавляем код в пул указанное количество раз
+      const addedCount = await DB.addCodesToPoolWithLimit(code, user.telegram_id, usageCount);
+      
+      if (addedCount === 0) {
+        const msg = user.language === 'en'
+          ? '❌ This code has already been added to the pool'
+          : '❌ Этот код уже был добавлен в пул';
+        return ctx.reply(msg);
+      }
+      
+      // Обновляем статус пользователя
+      await DB.updateUser(user.telegram_id, {
+        codes_returned: 1,
+        codes_submitted: [code],
+        pending_code: null,
+        awaiting_usage_choice: false,
+        usage_count_shared: usageCount,
+        status: 'completed'
+      });
+      
+      const remaining = 4 - usageCount;
+      const msg = user.language === 'en'
+        ? `✅ **Thank you!**
+
+Code: \`${code}\`
+Shared uses: **${usageCount}**
+Your remaining uses: **${remaining}**
+
+Up to ${usageCount} people will be able to register with this code!
+
+You're all set! 🎉`
+        : `✅ **Спасибо!**
+
+Код: \`${code}\`
+Поделился: **${usageCount}** ${usageCount === 1 ? 'использованием' : 'использованиями'}
+Осталось тебе: **${remaining}**
+
+До ${usageCount} ${usageCount === 1 ? 'человека' : 'человек'} смогут зарегистрироваться по этому коду!
+
+С тебя больше ничего не требуется! 🎉`;
+      
+      await ctx.editMessageText(msg, { parse_mode: 'Markdown' });
+      
+      // Уведомление админу
+      try {
+        await ctx.telegram.sendMessage(
+          config.telegram.adminId,
+          `✅ Код получен от @${user.username}:\nКод: ${code}\nИспользований: ${usageCount} (добавлено ${addedCount} раз)`
+        );
+      } catch (error) {
+        console.error('Admin notification failed:', error.message);
+      }
+    } catch (error) {
+      console.error('Error processing usage choice:', error);
+      await ctx.reply('❌ Произошла ошибка. Попробуй еще раз.');
+    }
+  });
+
   // Отказ
   bot.action('cancel', async (ctx) => {
     await ctx.answerCbQuery();

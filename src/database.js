@@ -141,52 +141,78 @@ export const DB = {
 
   // === INVITE POOL ===
   async addCodesToPool(codes, submittedBy) {
-    // Проверяем дубликаты и счётчик использований
-    const uniqueCodes = [];
+    // Простое добавление для донейшенов (без лимитов)
+    const batch = db.batch();
+    let addedCount = 0;
     
     for (const code of codes) {
-      // Проверяем сколько раз этот код уже в пуле/отправлен
-      const allInstances = await db.collection('invite_pool')
-        .where('code', '==', code)
-        .get();
-      
-      // Считаем использования: available + sent
-      const usageCount = allInstances.size;
-      
-      // Максимум 2 использования через бот (оставляем 2 для пользователя)
-      if (usageCount >= 2) {
-        console.log(`[Pool] Code ${code} already used ${usageCount} times, skipping`);
-        continue;
-      }
-      
-      uniqueCodes.push(code);
-    }
-    
-    if (uniqueCodes.length === 0) {
-      return 0; // Все коды были дубликатами
-    }
-    
-    const batch = db.batch();
-    
-    for (const code of uniqueCodes) {
       const codeRef = db.collection('invite_pool').doc();
       batch.set(codeRef, {
         code: code,
         submitted_by: String(submittedBy),
         status: 'available',
         sent_to: null,
+        usage_limit: 1, // По умолчанию 1 использование
         created_at: FieldValue.serverTimestamp()
       });
+      addedCount++;
     }
     
     await batch.commit();
     
     // Обновить счетчик в настройках
     await this.updateSystemSettings({
-      codes_in_pool: FieldValue.increment(uniqueCodes.length)
+      codes_in_pool: FieldValue.increment(addedCount)
     });
     
-    return uniqueCodes.length;
+    return addedCount;
+  },
+
+  async addCodesToPoolWithLimit(code, submittedBy, usageLimit) {
+    // Проверяем сколько раз этот код уже в пуле
+    const existing = await db.collection('invite_pool')
+      .where('code', '==', code)
+      .get();
+    
+    const currentUsage = existing.size;
+    
+    // Максимум 4 использования на код
+    if (currentUsage >= 4) {
+      console.log(`[Pool] Code ${code} already used ${currentUsage} times`);
+      return 0;
+    }
+    
+    // Сколько использований можем добавить
+    const availableSlots = Math.min(usageLimit, 4 - currentUsage);
+    
+    if (availableSlots === 0) {
+      return 0;
+    }
+    
+    const batch = db.batch();
+    
+    // Добавляем код столько раз, сколько пользователь выбрал
+    for (let i = 0; i < availableSlots; i++) {
+      const codeRef = db.collection('invite_pool').doc();
+      batch.set(codeRef, {
+        code: code,
+        submitted_by: String(submittedBy),
+        status: 'available',
+        sent_to: null,
+        usage_number: currentUsage + i + 1, // Какое по счёту использование
+        total_limit: usageLimit, // Сколько всего пользователь поделился
+        created_at: FieldValue.serverTimestamp()
+      });
+    }
+    
+    await batch.commit();
+    
+    // Обновить счетчик
+    await this.updateSystemSettings({
+      codes_in_pool: FieldValue.increment(availableSlots)
+    });
+    
+    return availableSlots;
   },
 
   async getAvailableCode() {
