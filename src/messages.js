@@ -265,26 +265,26 @@ You're free from any obligations. Thanks for being fair! 💚`
 С тебя больше ничего не требуется. Спасибо за честность! 💚`,
 
     ownCodeDetected: (code, language) => language === 'en'
-      ? `⚠️ **You're trying to return your own invite code**
+      ? `⚠️ **This is the code you got from the bot**
 
-Your code: \`${code}\`
+Code from bot: \`${code}\`
 
 **Did you want to:**
-• Return your UNUSED invite? (got invite elsewhere) ↩️
-• Or return codes from Sora after registration? 📨
+• Return UNUSED invite? (got invite elsewhere) ↩️
+• Or return YOUR code from Sora? 📨
 
-If you didn't use this invite — click the button below.
-If you registered in Sora — send codes that Sora gave YOU (not this code).`
-      : `⚠️ **Ты пытаешься вернуть свой собственный инвайт-код**
+**If you registered in Sora:**
+Send the code that SORA gave YOU (different from ${code})`
+      : `⚠️ **Это код который ты получил от бота**
 
-Твой код: \`${code}\`
+Код от бота: \`${code}\`
 
 **Ты хотел:**
 • Вернуть НЕИСПОЛЬЗОВАННЫЙ инвайт? (получил инвайт в другом месте) ↩️
-• Или вернуть коды от Sora после регистрации? 📨
+• Или вернуть СВОЙ код от Sora? 📨
 
-Если ты не использовал этот инвайт — нажми кнопку ниже.
-Если ты зарегистрировался в Sora — отправь коды, которые выдала ТЕБЕ Sora (не этот код).`
+**Если ты зарегистрировался в Sora:**
+Отправь код который выдала ТЕБЕ Sora (он другой, не ${code})`
   },
 
   en: {

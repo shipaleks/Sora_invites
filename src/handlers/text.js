@@ -82,15 +82,16 @@ async function handleCodeSubmission(ctx, user) {
     return ctx.reply(msg, { parse_mode: 'Markdown' });
   }
   
-  // Защита: проверяем что пользователь не отправляет свой собственный код
-  const ownCode = user.invite_code_given?.toUpperCase();
-  const validCodes = codes.filter(code => code !== ownCode);
+  // Защита: проверяем что пользователь НЕ отправляет код который получил от БОТА
+  const botGivenCode = user.invite_code_given?.toUpperCase();
+  const validCodes = codes.filter(code => code !== botGivenCode);
   
   if (validCodes.length < codes.length) {
+    // Пользователь отправил код который получил от бота
     const MESSAGES = getMessages(user.language || 'ru');
     
-    // Предлагаем вернуть неиспользованный инвайт
-    await ctx.reply(MESSAGES.ownCodeDetected(ownCode, user.language), {
+    // Предлагаем вернуть неиспользованный инвайт (если не зарегистрировался)
+    await ctx.reply(MESSAGES.ownCodeDetected(botGivenCode, user.language), {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [[
@@ -100,7 +101,7 @@ async function handleCodeSubmission(ctx, user) {
     });
     
     if (validCodes.length === 0) {
-      return; // Все коды были собственными
+      return; // Отправил только код от бота
     }
   }
   
