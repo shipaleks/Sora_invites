@@ -245,24 +245,18 @@ export function registerCallbacks(bot) {
       
       const remaining = 4 - usageCount;
       const msg = user.language === 'en'
-        ? `✅ **Thank you!**
+        ? `✅ Done!
 
 Code: \`${code}\`
-Shared uses: **${usageCount}**
-Your remaining uses: **${remaining}**
+Shared: **${usageCount}** / Yours: **${remaining}**
 
-Up to ${usageCount} people will be able to register with this code!
-
-You're all set! 🎉`
-        : `✅ **Спасибо!**
+Up to ${usageCount} people will get access through bot. You're all set! 🎉`
+        : `✅ Готово!
 
 Код: \`${code}\`
-Поделился: **${usageCount}** ${usageCount === 1 ? 'использованием' : 'использованиями'}
-Осталось тебе: **${remaining}**
+В бот: **${usageCount}** / Тебе: **${remaining}**
 
-До ${usageCount} ${usageCount === 1 ? 'человека' : 'человек'} смогут зарегистрироваться по этому коду!
-
-С тебя больше ничего не требуется! 🎉`;
+До ${usageCount} ${usageCount === 1 ? 'человека' : 'человек'} получат доступ через бот. Всё! 🎉`;
       
       await ctx.editMessageText(msg, { parse_mode: 'Markdown' });
       
@@ -316,20 +310,18 @@ You're all set! 🎉`
       
       const remaining = 4 - usageCount;
       const msg = user.language === 'en'
-        ? `✅ **Thank you for your donation!**
+        ? `✅ Thanks for donation!
 
 Code: \`${code}\`
-Donated uses: **${usageCount}**
-Your remaining uses: **${remaining}**
+Donated: **${usageCount}** / Yours: **${remaining}**
 
-Up to ${usageCount} people will be able to register thanks to you! 🎉`
-        : `✅ **Спасибо за пожертвование!**
+Up to ${usageCount} people will register thanks to you! 🎉`
+        : `✅ Спасибо за пожертвование!
 
 Код: \`${code}\`
-Пожертвовал: **${usageCount}** ${usageCount === 1 ? 'использование' : 'использований'}
-Осталось тебе: **${remaining}**
+В бот: **${usageCount}** / Тебе: **${remaining}**
 
-До ${usageCount} ${usageCount === 1 ? 'человека' : 'человек'} смогут зарегистрироваться благодаря тебе! 🎉`;
+До ${usageCount} ${usageCount === 1 ? 'человека' : 'человек'} получат доступ! 🎉`;
       
       await ctx.editMessageText(msg, { parse_mode: 'Markdown' });
       
