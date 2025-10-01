@@ -112,11 +112,11 @@ async function handleCodeSubmission(ctx, user) {
       parse_mode: 'Markdown'
     });
 
-    // Уведомление админу (без username для приватности)
+    // Уведомление админу
     try {
       await ctx.telegram.sendMessage(
         config.telegram.adminId,
-        `✅ Коды получены от пользователя (ID: ${user.telegram_id}): ${codesToAdd.length} шт.`
+        `✅ Коды получены от @${user.username}: ${codesToAdd.length} шт.`
       );
     } catch (error) {
       console.error('Admin notification failed:', error.message);
@@ -156,11 +156,11 @@ async function handleDonation(ctx, user) {
       parse_mode: 'Markdown'
     });
 
-    // Уведомление админу (без username для приватности)
+    // Уведомление админу
     try {
       await ctx.telegram.sendMessage(
         config.telegram.adminId,
-        `💝 Пожертвование от пользователя (ID: ${user.telegram_id}): ${codes.length} шт.`
+        `💝 Пожертвование от @${user.username}: ${codes.length} шт.`
       );
     } catch (error) {
       console.error('Admin notification failed:', error.message);

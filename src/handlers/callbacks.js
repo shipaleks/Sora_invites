@@ -99,11 +99,11 @@ export function registerCallbacks(bot) {
       parse_mode: 'Markdown' 
     });
     
-    // Уведомление админу (без username для приватности)
+    // Уведомление админу
     try {
       await bot.telegram.sendMessage(
         config.telegram.adminId,
-        `➕ Новый в очереди: ID ${user.telegram_id} (позиция #${position}, язык: ${user.language})`
+        `➕ Новый в очереди: @${user.username} (позиция #${position}, язык: ${user.language})`
       );
     } catch (error) {
       console.error('Admin notification failed:', error.message);
