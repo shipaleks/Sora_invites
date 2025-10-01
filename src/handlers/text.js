@@ -52,18 +52,20 @@ export function registerTextHandlers(bot) {
       return ctx.reply(MESSAGES.notInSystem, { parse_mode: 'Markdown' });
     }
     
-    // Если пользователь хочет пожертвовать код
-    if (user.awaiting_donation || user.awaiting_donation_usage) {
-      return handleDonation(ctx, user);
-    }
+    // Проверяем флаги в правильном порядке
     
-    // Если пользователь возвращает неиспользованный инвайт
+    // 1. Возврат неиспользованного инвайта (специфичный флаг)
     if (user.awaiting_unused_return) {
       return handleUnusedReturn(ctx, user);
     }
     
-    // Если пользователь получил инвайт, принимаем коды
-    if (user.status === 'received') {
+    // 2. Пожертвование (специфичный флаг)
+    if (user.awaiting_donation || user.awaiting_donation_usage) {
+      return handleDonation(ctx, user);
+    }
+    
+    // 3. Обычный возврат кодов после регистрации (awaiting_codes ИЛИ статус received)
+    if (user.awaiting_codes || user.status === 'received') {
       return handleCodeSubmission(ctx, user);
     }
   });

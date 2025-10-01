@@ -155,9 +155,12 @@ export function registerCallbacks(bot) {
       parse_mode: 'Markdown'
     });
     
-    // Устанавливаем флаг ожидания кодов
+    // Устанавливаем флаг ожидания кодов и СБРАСЫВАЕМ остальные
     await DB.updateUser(userId, {
-      awaiting_codes: true
+      awaiting_codes: true,
+      awaiting_donation: false,
+      awaiting_unused_return: false,
+      awaiting_donation_usage: false
     });
   });
 
