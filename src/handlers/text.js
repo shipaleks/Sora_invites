@@ -85,11 +85,11 @@ async function handleCodeSubmission(ctx, user) {
   const code = codes[0]; // Берём первый код
   const botGivenCode = user.invite_code_given?.toUpperCase();
   
-  // ЕДИНСТВЕННАЯ ПРОВЕРКА: код НЕ должен быть тем что получил от бота
-  if (code === botGivenCode) {
+  // ПРОСТАЯ ПРОВЕРКА: код от бота блокируем, остальные принимаем
+  if (botGivenCode && code === botGivenCode) {
     return ctx.reply(
-      `⚠️ Это код который ты получил ОТ БОТА для регистрации: \`${botGivenCode}\`\n\n` +
-      `Отправь код который выдала ТЕБЕ Sora ПОСЛЕ регистрации (он другой).`,
+      `⚠️ Это код от бота для регистрации: \`${botGivenCode}\`\n\n` +
+      `Нужен код от Sora ПОСЛЕ регистрации.`,
       { parse_mode: 'Markdown' }
     );
   }
@@ -98,7 +98,8 @@ async function handleCodeSubmission(ctx, user) {
     // Сохраняем код для выбора количества использований
     await DB.updateUser(user.telegram_id, {
       pending_code: code,
-      awaiting_usage_choice: true
+      awaiting_usage_choice: true,
+      awaiting_codes: false // Сбрасываем флаг
     });
     
     await ctx.reply(MESSAGES.chooseUsageCount(code), {
