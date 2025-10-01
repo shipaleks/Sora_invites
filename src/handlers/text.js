@@ -19,6 +19,9 @@ export function registerTextHandlers(bot) {
         if (text.startsWith('/addcodes ')) {
           return handleAdminAddCodes(ctx, text, user?.language || 'ru');
         }
+        if (text.startsWith('/removecode ')) {
+          return handleAdminRemoveCode(ctx, text, user?.language || 'ru');
+        }
         if (text === '/poolsize') {
           return handlePoolSize(ctx, user?.language || 'ru');
         }
@@ -219,6 +222,29 @@ async function handleAdminAddCodes(ctx, text, language) {
     : `✅ Добавлено ${codes.length} ${pluralize(codes.length, 'код', 'кода', 'кодов', language)} в пул`;
   
   return ctx.reply(msg);
+}
+
+async function handleAdminRemoveCode(ctx, text, language) {
+  const code = text.replace('/removecode ', '').trim().toUpperCase();
+  
+  if (!code || code.length < 5) {
+    const msg = language === 'en' ? '❌ Specify code to remove' : '❌ Укажи код для удаления';
+    return ctx.reply(msg);
+  }
+  
+  const removed = await DB.removeCodeFromPool(code);
+  
+  if (removed) {
+    const msg = language === 'en'
+      ? `✅ Code removed from pool: \`${code}\``
+      : `✅ Код удалён из пула: \`${code}\``;
+    return ctx.reply(msg, { parse_mode: 'Markdown' });
+  } else {
+    const msg = language === 'en'
+      ? `❌ Code not found in pool: \`${code}\``
+      : `❌ Код не найден в пуле: \`${code}\``;
+    return ctx.reply(msg, { parse_mode: 'Markdown' });
+  }
 }
 
 async function handlePoolSize(ctx, language) {

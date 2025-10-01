@@ -202,6 +202,7 @@ ${poolSize > queueSize
     adminHelp: `🔧 **Админ команды:**
 
 \`/addcodes код1 код2 код3\` - Добавить коды вручную
+\`/removecode КОД\` - Удалить код из пула
 \`/poolsize\` - Размер пула
 \`/queuesize\` - Размер очереди
 \`/broadcast текст\` - Рассылка всем пользователям
@@ -491,6 +492,7 @@ Write to ${config.telegram.channel}`,
     adminHelp: `🔧 **Admin Commands:**
 
 \`/addcodes code1 code2 code3\` - Add codes manually
+\`/removecode CODE\` - Remove code from pool
 \`/poolsize\` - Pool size
 \`/queuesize\` - Queue size
 \`/broadcast text\` - Broadcast to all users

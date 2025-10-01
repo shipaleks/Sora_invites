@@ -199,6 +199,26 @@ export const DB = {
     return snapshot.size;
   },
 
+  async removeCodeFromPool(code) {
+    const snapshot = await db.collection('invite_pool')
+      .where('code', '==', code.toUpperCase())
+      .where('status', '==', 'available')
+      .get();
+    
+    if (snapshot.empty) {
+      return false;
+    }
+    
+    const doc = snapshot.docs[0];
+    await doc.ref.delete();
+    
+    await this.updateSystemSettings({
+      codes_in_pool: FieldValue.increment(-1)
+    });
+    
+    return true;
+  },
+
   // === SETTINGS ===
   async getSystemSettings() {
     const doc = await db.collection('settings').doc('system').get();
