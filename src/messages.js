@@ -298,55 +298,39 @@ If you registered in Sora — send codes that Sora gave YOU (not this code).`
 
 Click the button below to get an invite 👇`,
 
-    rules: (codesRequired) => `📜 **System Rules:**
+    rules: (codesRequired) => `📜 **Rules:**
 
-1️⃣ You will receive 1 invite code to register on sora.com
+1️⃣ Get invite → register on sora.com
 
-2️⃣ After registration, you'll get **1 invite code with 4 uses**
+2️⃣ In Sora you'll have **1 code with 4 uses**
 
-3️⃣ **You send this code 1 time** back to the bot (helping others)
+3️⃣ Return code to bot → choose how many uses to share (1-4)
 
-4️⃣ Keep the remaining 3 uses for your friends
+4️⃣ Keep the rest
 
-⚠️ **Important:** You don't get 4 different codes, just 1 code that can be used 4 times!
+💡 Mutual help system — everyone shares what they can!
 
-⏰ Return deadline: **48 hours** after receiving the invite
+Agree?`,
 
-💡 This is a mutual help system — the more people return codes, the faster the queue grows!
-
-Do you agree with the terms?`,
-
-    inviteSent: (code, codesRequired) => `🎉 **Congratulations! Your invite code:**
+    inviteSent: (code, codesRequired) => `🎉 **Your invite:**
 
 \`${code}\`
 
-📝 **Instructions:**
-1. Connect to a US VPN 🇺🇸
-2. Go to sora.com and register
-3. After registration, you'll get **1 invite code with 4 uses**
+**What to do:**
+1. Enable VPN 🇺🇸
+2. Register on sora.com
+3. In Sora you'll get your code (one, 4 uses)
+4. Copy it and send here
 
-⚠️ **IMPORTANT to understand:**
-• You'll have **ONE code** that can be used **4 times**
-• This is NOT 4 different codes!
-• Counter "3/4 invites" shows how many uses remain
+**Where to find code in Sora:**
+→ Web: corner ⋮ → Invite Friends
+→ App: "4 invites" → Share
 
-**How to return the code to bot:**
-• **Web:** Three dots (⋮) → Invite Friends → Copy code (6 chars)
-• **App:** "4 invites" → Share invite → Copy
+📨 Come back, send code → choose how many uses to share (I recommend 2).
 
-**What you need to do:**
-• Send this code **1 time** back to the bot
-• Keep the remaining 3 uses for your friends
+⏰ Deadline: 48h
 
-⏰ **Deadline: 48 hours**
-
-🔔 Bot will remind you in 12 hours if you don't send
-
-📨 When you register and see the code — send it here right away 👇
-
-💝 Optional (but appreciated):
-• Subscribe to ${config.telegram.channel}
-• Follow ${config.telegram.soraUsername} on Sora`,
+💝 Subscribe: ${config.telegram.channel} / ${config.telegram.soraUsername}`,
 
     waitingForCodes: (codesRequired) => `📨 **Sending Codes**
 
@@ -483,16 +467,13 @@ Write to ${config.telegram.channel}`,
       usage4: '4 people (give all)'
     },
 
-    chooseUsageCount: (code) => `✅ **Code accepted:** \`${code}\`
+    chooseUsageCount: (code) => `✅ Code: \`${code}\`
 
-How many uses of this code are you willing to share?
+**How many people to invite through bot?**
 
-💡 **Explanation:**
-• Code can be used 4 times
-• Each use = 1 person can register
-• Remainder stays with you for friends
+Code works 4 times. Rest stays with you.
 
-Choose quantity:`
+Choose:`
   }
 };
 
