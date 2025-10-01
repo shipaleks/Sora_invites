@@ -219,6 +219,25 @@ export const DB = {
     return true;
   },
 
+  async clearAllAvailableCodes() {
+    const snapshot = await db.collection('invite_pool')
+      .where('status', '==', 'available')
+      .get();
+    
+    const batch = db.batch();
+    snapshot.docs.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+    
+    await batch.commit();
+    
+    await this.updateSystemSettings({
+      codes_in_pool: 0
+    });
+    
+    return snapshot.size;
+  },
+
   // === SETTINGS ===
   async getSystemSettings() {
     const doc = await db.collection('settings').doc('system').get();
@@ -269,4 +288,3 @@ export const DB = {
 };
 
 export default DB;
-

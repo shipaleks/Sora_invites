@@ -22,6 +22,9 @@ export function registerTextHandlers(bot) {
         if (text.startsWith('/removecode ')) {
           return handleAdminRemoveCode(ctx, text, user?.language || 'ru');
         }
+        if (text === '/clearpool') {
+          return handleClearPool(ctx, user?.language || 'ru');
+        }
         if (text === '/poolsize') {
           return handlePoolSize(ctx, user?.language || 'ru');
         }
@@ -205,23 +208,24 @@ async function handleDonation(ctx, user) {
 }
 
 async function handleAdminAddCodes(ctx, text, language) {
-  const codes = text
-    .replace('/addcodes ', '')
-    .split(/\s+/)
-    .filter(c => c.length >= 5);
+  const codesText = text.replace('/addcodes ', '');
+  
+  // Используем тот же умный парсер что и для обычных пользователей
+  const codes = extractCodes(codesText);
   
   if (codes.length === 0) {
-    const msg = language === 'en' ? '❌ No valid codes specified' : '❌ Не указаны валидные коды';
+    const msg = language === 'en' ? '❌ No valid codes found' : '❌ Не найдено валидных кодов';
     return ctx.reply(msg);
   }
   
   await DB.addCodesToPool(codes, 'admin');
   
+  const codesList = codes.join(', ');
   const msg = language === 'en'
-    ? `✅ Added ${codes.length} code${codes.length > 1 ? 's' : ''} to pool`
-    : `✅ Добавлено ${codes.length} ${pluralize(codes.length, 'код', 'кода', 'кодов', language)} в пул`;
+    ? `✅ Added ${codes.length} code${codes.length > 1 ? 's' : ''} to pool:\n\`${codesList}\``
+    : `✅ Добавлено ${codes.length} ${pluralize(codes.length, 'код', 'кода', 'кодов', language)} в пул:\n\`${codesList}\``;
   
-  return ctx.reply(msg);
+  return ctx.reply(msg, { parse_mode: 'Markdown' });
 }
 
 async function handleAdminRemoveCode(ctx, text, language) {
@@ -245,6 +249,16 @@ async function handleAdminRemoveCode(ctx, text, language) {
       : `❌ Код не найден в пуле: \`${code}\``;
     return ctx.reply(msg, { parse_mode: 'Markdown' });
   }
+}
+
+async function handleClearPool(ctx, language) {
+  const count = await DB.clearAllAvailableCodes();
+  
+  const msg = language === 'en'
+    ? `✅ Cleared ${count} code${count !== 1 ? 's' : ''} from pool`
+    : `✅ Очищено ${count} ${pluralize(count, 'код', 'кода', 'кодов', language)} из пула`;
+  
+  return ctx.reply(msg);
 }
 
 async function handlePoolSize(ctx, language) {
