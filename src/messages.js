@@ -330,8 +330,7 @@ Agree?`,
 
 ⏰ Deadline: 48h
 
-💝 Follow my research on AI & Sora: ${config.telegram.twitterEn}
-Head of Research @ Anthropic | AI Safety & Creative Tools`,
+💝 Follow for AI insights & Sora tips: ${config.telegram.twitterEn}`,
 
     waitingForCodes: (codesRequired) => `📨 **Sending Codes**
 
@@ -441,8 +440,8 @@ Click /start to begin!`,
 4. Return your code to the bot
 5. Help others get access!
 
-**Learn more about AI:**
-Follow my research: ${config.telegram.twitterEn}`,
+**AI insights & Sora tips:**
+${config.telegram.twitterEn}`,
 
     adminHelp: `🔧 **Admin Commands:**
 
