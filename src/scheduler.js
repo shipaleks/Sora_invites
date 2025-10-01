@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import DB from './database.js';
-import { MESSAGES } from './messages.js';
+import { getMessages } from './messages.js';
 import config from './config.js';
 import { getHoursSince } from './utils/helpers.js';
 
@@ -23,6 +23,7 @@ function startReminderScheduler(bot) {
         if (!user.invite_sent_at) continue;
         
         const hoursElapsed = getHoursSince(user.invite_sent_at);
+        const MESSAGES = getMessages(user.language || 'ru');
         
         // Проверяем интервалы напоминаний
         for (let i = 0; i < config.rules.reminderIntervals.length; i++) {
@@ -67,7 +68,7 @@ function startReminderScheduler(bot) {
                 parse_mode: 'Markdown',
                 reply_markup: {
                   inline_keyboard: [[
-                    { text: '📨 Отправить коды', callback_data: 'submit_codes' }
+                    { text: MESSAGES.buttons.submitCodes, callback_data: 'submit_codes' }
                   ]]
                 }
               });
@@ -140,6 +141,8 @@ async function processNextInvite(bot, userId, codeObj) {
       return;
     }
     
+    const MESSAGES = getMessages(user.language || 'ru');
+    
     // Определяем является ли пользователь из первых 10
     const count = await DB.incrementFirst10Count();
     const codesRequired = count <= 10 ? 
@@ -163,13 +166,13 @@ async function processNextInvite(bot, userId, codeObj) {
         parse_mode: 'Markdown',
         reply_markup: {
           inline_keyboard: [[
-            { text: '📨 Отправить коды', callback_data: 'submit_codes' }
+            { text: MESSAGES.buttons.submitCodes, callback_data: 'submit_codes' }
           ]]
         }
       }
     );
     
-    console.log(`[Queue] Sent invite to @${user.username} (${count <= 10 ? 'first 10' : 'regular'})`);
+    console.log(`[Queue] Sent invite to @${user.username} (${count <= 10 ? 'first 10' : 'regular'}, lang: ${user.language})`);
     
     // Уведомить админа
     try {
@@ -177,7 +180,8 @@ async function processNextInvite(bot, userId, codeObj) {
         config.telegram.adminId,
         `✅ Инвайт отправлен: @${user.username}\n` +
         `Должен вернуть: ${codesRequired} кодов\n` +
-        `Статус: ${count <= 10 ? 'Из первых 10' : 'Обычный пользователь'}`
+        `Статус: ${count <= 10 ? 'Из первых 10' : 'Обычный пользователь'}\n` +
+        `Язык: ${user.language === 'en' ? 'English' : 'Русский'}`
       );
     } catch (error) {
       console.error('[Queue] Admin notification failed:', error.message);
@@ -186,4 +190,3 @@ async function processNextInvite(bot, userId, codeObj) {
     console.error(`[Queue] Failed to process invite for ${userId}:`, error);
   }
 }
-

@@ -1,14 +1,40 @@
 import DB from '../database.js';
-import { MESSAGES } from '../messages.js';
+import { getMessages } from '../messages.js';
 import config from '../config.js';
 
 export function registerCallbacks(bot) {
+  // Выбор языка
+  bot.action(/^lang_(ru|en)$/, async (ctx) => {
+    await ctx.answerCbQuery();
+    
+    const userId = ctx.from.id;
+    const language = ctx.match[1];
+    
+    await DB.updateUser(userId, { language });
+    
+    const MESSAGES = getMessages(language);
+    
+    await ctx.editMessageText(
+      `${language === 'ru' ? '✅ Язык установлен: Русский' : '✅ Language set: English'}\n\n${MESSAGES.welcome}`,
+      {
+        reply_markup: {
+          inline_keyboard: [[
+            { text: MESSAGES.buttons.wantInvite, callback_data: 'want_invite' }
+          ]]
+        },
+        parse_mode: 'Markdown'
+      }
+    );
+  });
+
   // Хочу инвайт
   bot.action('want_invite', async (ctx) => {
     await ctx.answerCbQuery();
     
     const userId = ctx.from.id;
     const user = await DB.getUser(userId);
+    
+    const MESSAGES = getMessages(user?.language || 'ru');
     
     if (!user) {
       return ctx.reply(MESSAGES.notInSystem, { parse_mode: 'Markdown' });
@@ -24,7 +50,8 @@ export function registerCallbacks(bot) {
 
     // Проверка, не получил ли уже инвайт
     if (user.status === 'received' || user.status === 'completed') {
-      return ctx.reply('✅ Ты уже получил инвайт!', { parse_mode: 'Markdown' });
+      const msg = user.language === 'en' ? '✅ You already received an invite!' : '✅ Ты уже получил инвайт!';
+      return ctx.reply(msg, { parse_mode: 'Markdown' });
     }
     
     // Определяем сколько кодов потребуется
@@ -36,8 +63,8 @@ export function registerCallbacks(bot) {
     await ctx.reply(MESSAGES.rules(codesRequired), {
       reply_markup: {
         inline_keyboard: [
-          [{ text: '✅ Понятно, согласен', callback_data: 'agree_rules' }],
-          [{ text: '❌ Отказаться', callback_data: 'cancel' }]
+          [{ text: MESSAGES.buttons.agree, callback_data: 'agree_rules' }],
+          [{ text: MESSAGES.buttons.cancel, callback_data: 'cancel' }]
         ]
       },
       parse_mode: 'Markdown'
@@ -50,6 +77,8 @@ export function registerCallbacks(bot) {
     
     const userId = ctx.from.id;
     const user = await DB.getUser(userId);
+    
+    const MESSAGES = getMessages(user?.language || 'ru');
     
     if (!user) {
       return ctx.reply(MESSAGES.notInSystem, { parse_mode: 'Markdown' });
@@ -74,7 +103,7 @@ export function registerCallbacks(bot) {
     try {
       await bot.telegram.sendMessage(
         config.telegram.adminId,
-        `➕ Новый в очереди: @${user.username} (позиция #${position})`
+        `➕ Новый в очереди: @${user.username} (позиция #${position}, язык: ${user.language})`
       );
     } catch (error) {
       console.error('Admin notification failed:', error.message);
@@ -88,8 +117,11 @@ export function registerCallbacks(bot) {
     const userId = ctx.from.id;
     const user = await DB.getUser(userId);
     
+    const MESSAGES = getMessages(user?.language || 'ru');
+    
     if (!user || user.status !== 'received') {
-      return ctx.reply('❌ Ты ещё не получил инвайт', { parse_mode: 'Markdown' });
+      const msg = user?.language === 'en' ? '❌ You haven\'t received an invite yet' : '❌ Ты ещё не получил инвайт';
+      return ctx.reply(msg, { parse_mode: 'Markdown' });
     }
     
     // Определяем сколько кодов нужно
@@ -113,9 +145,10 @@ export function registerCallbacks(bot) {
     const neededCodes = Math.max(0, codesRequired - user.codes_returned);
     
     if (neededCodes === 0) {
-      return ctx.reply('✅ Ты уже вернул все необходимые коды. Спасибо! 🙏', { 
-        parse_mode: 'Markdown' 
-      });
+      const msg = user.language === 'en' 
+        ? '✅ You\'ve already returned all required codes. Thank you! 🙏' 
+        : '✅ Ты уже вернул все необходимые коды. Спасибо! 🙏';
+      return ctx.reply(msg, { parse_mode: 'Markdown' });
     }
     
     await ctx.reply(MESSAGES.waitingForCodes(neededCodes), {
@@ -131,7 +164,14 @@ export function registerCallbacks(bot) {
   // Отказ
   bot.action('cancel', async (ctx) => {
     await ctx.answerCbQuery();
-    await ctx.reply('Хорошо, если передумаешь - нажми /start');
+    
+    const userId = ctx.from.id;
+    const user = await DB.getUser(userId);
+    
+    const msg = user?.language === 'en' 
+      ? 'Okay, if you change your mind - click /start' 
+      : 'Хорошо, если передумаешь - нажми /start';
+    
+    await ctx.reply(msg);
   });
 }
-

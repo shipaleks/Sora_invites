@@ -30,6 +30,7 @@ export const DB = {
     const userData = {
       telegram_id: String(telegramId),
       username: username || 'anonymous',
+      language: null, // будет установлен при выборе языка
       requested_at: FieldValue.serverTimestamp(),
       invite_sent_at: null,
       invite_code_given: null,

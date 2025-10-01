@@ -1,5 +1,5 @@
 import DB from '../database.js';
-import { MESSAGES } from '../messages.js';
+import { getMessages } from '../messages.js';
 import config from '../config.js';
 import { extractCodes } from '../utils/validators.js';
 import { pluralize } from '../utils/helpers.js';
@@ -9,18 +9,21 @@ export function registerTextHandlers(bot) {
     const userId = ctx.from.id;
     const text = ctx.message.text;
     
+    const user = await DB.getUser(userId);
+    const MESSAGES = getMessages(user?.language || 'ru');
+    
     // Игнорируем команды (они обрабатываются отдельно)
     if (text.startsWith('/')) {
       // Админ команды
       if (userId === config.telegram.adminId) {
         if (text.startsWith('/addcodes ')) {
-          return handleAdminAddCodes(ctx, text);
+          return handleAdminAddCodes(ctx, text, user?.language || 'ru');
         }
         if (text === '/poolsize') {
-          return handlePoolSize(ctx);
+          return handlePoolSize(ctx, user?.language || 'ru');
         }
         if (text === '/queuesize') {
-          return handleQueueSize(ctx);
+          return handleQueueSize(ctx, user?.language || 'ru');
         }
         if (text.startsWith('/broadcast ')) {
           return handleBroadcast(ctx, text, bot);
@@ -30,7 +33,6 @@ export function registerTextHandlers(bot) {
     }
     
     // Обработка возврата кодов
-    const user = await DB.getUser(userId);
     if (!user) {
       return ctx.reply(MESSAGES.notInSystem, { parse_mode: 'Markdown' });
     }
@@ -46,11 +48,13 @@ async function handleCodeSubmission(ctx, user) {
   const text = ctx.message.text;
   const codes = extractCodes(text);
   
+  const MESSAGES = getMessages(user.language || 'ru');
+  
   if (codes.length === 0) {
-    return ctx.reply(
-      '❌ Не найдено валидных кодов. Отправь коды в формате:\n```\nкод1\nкод2\n```',
-      { parse_mode: 'Markdown' }
-    );
+    const msg = user.language === 'en'
+      ? '❌ No valid codes found. Send codes in format:\n```\ncode1\ncode2\n```'
+      : '❌ Не найдено валидных кодов. Отправь коды в формате:\n```\nкод1\nкод2\n```';
+    return ctx.reply(msg, { parse_mode: 'Markdown' });
   }
   
   // Определить сколько кодов нужно
@@ -71,17 +75,17 @@ async function handleCodeSubmission(ctx, user) {
   const neededCodes = codesRequired - user.codes_returned;
   
   if (neededCodes <= 0) {
-    return ctx.reply('✅ Ты уже вернул все необходимые коды. Спасибо!', {
-      parse_mode: 'Markdown'
-    });
+    const msg = user.language === 'en'
+      ? '✅ You\'ve already returned all required codes. Thank you!'
+      : '✅ Ты уже вернул все необходимые коды. Спасибо!';
+    return ctx.reply(msg, { parse_mode: 'Markdown' });
   }
   
   if (codes.length < neededCodes) {
-    return ctx.reply(
-      `❌ Нужно **${neededCodes}** ${pluralize(neededCodes, 'код', 'кода', 'кодов')}.\n` +
-      `Отправлено только **${codes.length}**.`,
-      { parse_mode: 'Markdown' }
-    );
+    const msg = user.language === 'en'
+      ? `❌ Need **${neededCodes}** code${neededCodes > 1 ? 's' : ''}.\nOnly **${codes.length}** sent.`
+      : `❌ Нужно **${neededCodes}** ${pluralize(neededCodes, 'код', 'кода', 'кодов', user.language)}.\nОтправлено только **${codes.length}**.`;
+    return ctx.reply(msg, { parse_mode: 'Markdown' });
   }
   
   const codesToAdd = codes.slice(0, neededCodes);
@@ -114,32 +118,47 @@ async function handleCodeSubmission(ctx, user) {
     }
   } catch (error) {
     console.error('Error processing codes:', error);
-    await ctx.reply('❌ Произошла ошибка при обработке кодов. Попробуй еще раз.');
+    const msg = user.language === 'en'
+      ? '❌ An error occurred while processing codes. Try again.'
+      : '❌ Произошла ошибка при обработке кодов. Попробуй еще раз.';
+    await ctx.reply(msg);
   }
 }
 
-async function handleAdminAddCodes(ctx, text) {
+async function handleAdminAddCodes(ctx, text, language) {
   const codes = text
     .replace('/addcodes ', '')
     .split(/\s+/)
     .filter(c => c.length >= 5);
   
   if (codes.length === 0) {
-    return ctx.reply('❌ Не указаны валидные коды');
+    const msg = language === 'en' ? '❌ No valid codes specified' : '❌ Не указаны валидные коды';
+    return ctx.reply(msg);
   }
   
   await DB.addCodesToPool(codes, 'admin');
-  return ctx.reply(`✅ Добавлено ${codes.length} ${pluralize(codes.length, 'код', 'кода', 'кодов')} в пул`);
+  
+  const msg = language === 'en'
+    ? `✅ Added ${codes.length} code${codes.length > 1 ? 's' : ''} to pool`
+    : `✅ Добавлено ${codes.length} ${pluralize(codes.length, 'код', 'кода', 'кодов', language)} в пул`;
+  
+  return ctx.reply(msg);
 }
 
-async function handlePoolSize(ctx) {
+async function handlePoolSize(ctx, language) {
   const size = await DB.getPoolSize();
-  return ctx.reply(`💎 Кодов в пуле: **${size}**`, { parse_mode: 'Markdown' });
+  const msg = language === 'en'
+    ? `💎 Codes in pool: **${size}**`
+    : `💎 Кодов в пуле: **${size}**`;
+  return ctx.reply(msg, { parse_mode: 'Markdown' });
 }
 
-async function handleQueueSize(ctx) {
+async function handleQueueSize(ctx, language) {
   const size = await DB.getQueueSize();
-  return ctx.reply(`👥 В очереди: **${size}**`, { parse_mode: 'Markdown' });
+  const msg = language === 'en'
+    ? `👥 In queue: **${size}**`
+    : `👥 В очереди: **${size}**`;
+  return ctx.reply(msg, { parse_mode: 'Markdown' });
 }
 
 async function handleBroadcast(ctx, text, bot) {
@@ -174,4 +193,3 @@ async function handleBroadcast(ctx, text, bot) {
     `Ошибок: ${failCount}`
   );
 }
-
