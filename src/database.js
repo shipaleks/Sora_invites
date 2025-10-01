@@ -141,20 +141,25 @@ export const DB = {
 
   // === INVITE POOL ===
   async addCodesToPool(codes, submittedBy) {
-    // Проверяем дубликаты в пуле
+    // Проверяем дубликаты и счётчик использований
     const uniqueCodes = [];
     
     for (const code of codes) {
-      const existing = await db.collection('invite_pool')
+      // Проверяем сколько раз этот код уже в пуле/отправлен
+      const allInstances = await db.collection('invite_pool')
         .where('code', '==', code)
-        .limit(1)
         .get();
       
-      if (existing.empty) {
-        uniqueCodes.push(code);
-      } else {
-        console.log(`[Pool] Duplicate code skipped: ${code}`);
+      // Считаем использования: available + sent
+      const usageCount = allInstances.size;
+      
+      // Максимум 2 использования через бот (оставляем 2 для пользователя)
+      if (usageCount >= 2) {
+        console.log(`[Pool] Code ${code} already used ${usageCount} times, skipping`);
+        continue;
       }
+      
+      uniqueCodes.push(code);
     }
     
     if (uniqueCodes.length === 0) {
