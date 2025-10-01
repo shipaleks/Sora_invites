@@ -330,7 +330,7 @@ Agree?`,
 
 ⏰ Deadline: 48h
 
-💝 Follow for AI insights & Sora tips: ${config.telegram.twitterEn}
+💝 Follow for AI insights: ${config.telegram.twitterEn}
 Head of Research at Yandex Search & AI`,
 
     waitingForCodes: (codesRequired) => `📨 **Sending Codes**
@@ -441,7 +441,7 @@ Click /start to begin!`,
 4. Return your code to the bot
 5. Help others get access!
 
-**AI insights & Sora tips:**
+**AI insights:**
 ${config.telegram.twitterEn}
 Head of Research at Yandex Search & AI`,
 
