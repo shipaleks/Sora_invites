@@ -1,0 +1,28 @@
+{
+  "name": "sora-invite-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot for Sora invite distribution with viral mechanics",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "init": "node scripts/init.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": ["telegram", "bot", "sora", "invite"],
+  "author": "shipaleks",
+  "license": "MIT",
+  "dependencies": {
+    "telegraf": "^4.15.0",
+    "firebase-admin": "^12.0.0",
+    "node-cron": "^3.0.3",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
+
