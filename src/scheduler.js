@@ -60,8 +60,8 @@ function startReminderScheduler(bot) {
             }
             
             const message = i === config.rules.reminderIntervals.length - 1 ?
-              MESSAGES.finalWarning(neededCodes) :
-              MESSAGES.reminder(Math.round(hoursLeft), neededCodes);
+              MESSAGES.finalWarning(codesRequired, user.codes_returned || 0) :
+              MESSAGES.reminder(Math.round(hoursLeft), codesRequired, user.codes_returned || 0);
             
             try {
               await bot.telegram.sendMessage(user.telegram_id, message, {

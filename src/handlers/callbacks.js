@@ -151,7 +151,7 @@ export function registerCallbacks(bot) {
       return ctx.reply(msg, { parse_mode: 'Markdown' });
     }
     
-    await ctx.reply(MESSAGES.waitingForCodes(neededCodes), {
+    await ctx.reply(MESSAGES.waitingForCodes(codesRequired, user.codes_returned || 0), {
       parse_mode: 'Markdown'
     });
     
