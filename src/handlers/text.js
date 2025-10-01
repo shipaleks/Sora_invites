@@ -37,6 +37,11 @@ export function registerTextHandlers(bot) {
       return ctx.reply(MESSAGES.notInSystem, { parse_mode: 'Markdown' });
     }
     
+    // Если пользователь хочет пожертвовать коды
+    if (user.awaiting_donation) {
+      return handleDonation(ctx, user);
+    }
+    
     // Если пользователь получил инвайт, принимаем коды
     if (user.status === 'received') {
       return handleCodeSubmission(ctx, user);
@@ -107,17 +112,61 @@ async function handleCodeSubmission(ctx, user) {
       parse_mode: 'Markdown'
     });
 
-    // Уведомление админу
+    // Уведомление админу (без username для приватности)
     try {
       await ctx.telegram.sendMessage(
         config.telegram.adminId,
-        `✅ Коды получены от @${user.username}: ${codesToAdd.length} шт.`
+        `✅ Коды получены от пользователя (ID: ${user.telegram_id}): ${codesToAdd.length} шт.`
       );
     } catch (error) {
       console.error('Admin notification failed:', error.message);
     }
   } catch (error) {
     console.error('Error processing codes:', error);
+    const msg = user.language === 'en'
+      ? '❌ An error occurred while processing codes. Try again.'
+      : '❌ Произошла ошибка при обработке кодов. Попробуй еще раз.';
+    await ctx.reply(msg);
+  }
+}
+
+async function handleDonation(ctx, user) {
+  const text = ctx.message.text;
+  const codes = extractCodes(text);
+  
+  const MESSAGES = getMessages(user.language || 'ru');
+  
+  if (codes.length === 0) {
+    const msg = user.language === 'en'
+      ? '❌ No valid codes found. Send codes in format:\n```\ncode1\ncode2\n```'
+      : '❌ Не найдено валидных кодов. Отправь коды в формате:\n```\nкод1\nкод2\n```';
+    return ctx.reply(msg, { parse_mode: 'Markdown' });
+  }
+  
+  try {
+    // Добавить в пул как донейшен
+    await DB.addCodesToPool(codes, `donation:${user.telegram_id}`);
+    
+    // Обновить флаг
+    await DB.updateUser(user.telegram_id, {
+      awaiting_donation: false
+    });
+    
+    await ctx.reply(MESSAGES.donationReceived(codes.length, user.language), {
+      parse_mode: 'Markdown'
+    });
+
+    // Уведомление админу (без username для приватности)
+    try {
+      await ctx.telegram.sendMessage(
+        config.telegram.adminId,
+        `💝 Пожертвование от пользователя (ID: ${user.telegram_id}): ${codes.length} шт.`
+      );
+    } catch (error) {
+      console.error('Admin notification failed:', error.message);
+    }
+  } catch (error) {
+    console.error('Error processing donation:', error);
     const msg = user.language === 'en'
       ? '❌ An error occurred while processing codes. Try again.'
       : '❌ Произошла ошибка при обработке кодов. Попробуй еще раз.';

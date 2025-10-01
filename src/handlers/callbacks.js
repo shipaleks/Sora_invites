@@ -99,11 +99,11 @@ export function registerCallbacks(bot) {
       parse_mode: 'Markdown' 
     });
     
-    // Уведомление админу
+    // Уведомление админу (без username для приватности)
     try {
       await bot.telegram.sendMessage(
         config.telegram.adminId,
-        `➕ Новый в очереди: @${user.username} (позиция #${position}, язык: ${user.language})`
+        `➕ Новый в очереди: ID ${user.telegram_id} (позиция #${position}, язык: ${user.language})`
       );
     } catch (error) {
       console.error('Admin notification failed:', error.message);
@@ -158,6 +158,25 @@ export function registerCallbacks(bot) {
     // Устанавливаем флаг ожидания кодов
     await DB.updateUser(userId, {
       awaiting_codes: true
+    });
+  });
+
+  // Пожертвовать коды
+  bot.action('donate_codes', async (ctx) => {
+    await ctx.answerCbQuery();
+    
+    const userId = ctx.from.id;
+    const user = await DB.getUser(userId);
+    
+    const MESSAGES = getMessages(user?.language || 'ru');
+    
+    await ctx.reply(MESSAGES.donateCodesPrompt(user?.language || 'ru'), {
+      parse_mode: 'Markdown'
+    });
+    
+    // Устанавливаем флаг ожидания донейшен кодов
+    await DB.updateUser(userId, {
+      awaiting_donation: true
     });
   });
 

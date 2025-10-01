@@ -167,9 +167,50 @@ ${poolSize > queueSize
       agree: '✅ Понятно, согласен',
       cancel: '❌ Отказаться',
       submitCodes: '📨 Отправить коды',
+      donateCodes: '💝 Пожертвовать коды',
       russian: '🇷🇺 Русский',
       english: '🇬🇧 English'
-    }
+    },
+
+    donateCodesPrompt: (language) => language === 'en' 
+      ? `💝 **Donate Invite Codes**
+
+Thank you for helping the community! 🙏
+
+Send invite codes you want to donate to the pool.
+Each code on a new line:
+\`\`\`
+code1
+code2
+code3
+\`\`\`
+
+Your donation will help others get access to Sora faster!`
+      : `💝 **Пожертвовать инвайт-коды**
+
+Спасибо, что помогаешь сообществу! 🙏
+
+Отправь инвайт-коды, которые хочешь пожертвовать в общий пул.
+Каждый код с новой строки:
+\`\`\`
+код1
+код2
+код3
+\`\`\`
+
+Твоё пожертвование поможет другим быстрее получить доступ к Sora!`,
+
+    donationReceived: (count, language) => language === 'en'
+      ? `✅ **Thank you!**
+
+${count} code${count > 1 ? 's' : ''} successfully added to the pool!
+
+Thanks to you, someone will get access to Sora! 🎉`
+      : `✅ **Спасибо!**
+
+${count} ${pluralizeRu(count, 'код', 'кода', 'кодов')} успешно ${count === 1 ? 'добавлен' : 'добавлены'} в пул!
+
+Благодаря тебе кто-то получит доступ к Sora! 🎉`
   },
 
   en: {
@@ -337,6 +378,7 @@ Write to ${config.telegram.channel}`,
       agree: '✅ I Agree',
       cancel: '❌ Cancel',
       submitCodes: '📨 Submit Codes',
+      donateCodes: '💝 Donate Codes',
       russian: '🇷🇺 Русский',
       english: '🇬🇧 English'
     }

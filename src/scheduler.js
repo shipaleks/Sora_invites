@@ -78,7 +78,7 @@ function startReminderScheduler(bot) {
                 last_reminder: new Date()
               });
               
-              console.log(`[Reminder] Sent to @${user.username} (${hoursLeft.toFixed(1)}h left)`);
+              console.log(`[Reminder] Sent to user ${user.telegram_id} (${hoursLeft.toFixed(1)}h left)`);
             } catch (error) {
               console.error(`[Reminder] Failed for ${user.telegram_id}:`, error.message);
             }
@@ -172,13 +172,13 @@ async function processNextInvite(bot, userId, codeObj) {
       }
     );
     
-    console.log(`[Queue] Sent invite to @${user.username} (${count <= 10 ? 'first 10' : 'regular'}, lang: ${user.language})`);
+    console.log(`[Queue] Sent invite to user ${user.telegram_id} (${count <= 10 ? 'first 10' : 'regular'}, lang: ${user.language})`);
     
-    // Уведомить админа
+    // Уведомить админа (без username для приватности)
     try {
       await bot.telegram.sendMessage(
         config.telegram.adminId,
-        `✅ Инвайт отправлен: @${user.username}\n` +
+        `✅ Инвайт отправлен: ID ${user.telegram_id}\n` +
         `Должен вернуть: ${codesRequired} кодов\n` +
         `Статус: ${count <= 10 ? 'Из первых 10' : 'Обычный пользователь'}\n` +
         `Язык: ${user.language === 'en' ? 'English' : 'Русский'}`

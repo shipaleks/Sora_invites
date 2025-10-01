@@ -35,7 +35,8 @@ export function registerCommands(bot) {
         reply_markup: {
           inline_keyboard: [
             [{ text: MESSAGES.buttons.wantInvite, callback_data: 'want_invite' }],
-            [{ text: MESSAGES.buttons.submitCodes, callback_data: 'submit_codes' }]
+            [{ text: MESSAGES.buttons.submitCodes, callback_data: 'submit_codes' }],
+            [{ text: MESSAGES.buttons.donateCodes, callback_data: 'donate_codes' }]
           ]
         },
         parse_mode: 'Markdown'
@@ -43,9 +44,10 @@ export function registerCommands(bot) {
     } else {
       await ctx.reply(MESSAGES.welcome, {
         reply_markup: {
-          inline_keyboard: [[
-            { text: MESSAGES.buttons.wantInvite, callback_data: 'want_invite' }
-          ]]
+          inline_keyboard: [
+            [{ text: MESSAGES.buttons.wantInvite, callback_data: 'want_invite' }],
+            [{ text: MESSAGES.buttons.donateCodes, callback_data: 'donate_codes' }]
+          ]
         },
         parse_mode: 'Markdown'
       });
