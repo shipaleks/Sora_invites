@@ -223,22 +223,49 @@ async function handleDonation(ctx, user) {
 }
 
 async function handleAdminAddCodes(ctx, text, language) {
-  const codesText = text.replace('/addcodes ', '');
+  const params = text.replace('/addcodes ', '').trim();
   
-  // Используем тот же умный парсер что и для обычных пользователей
-  const codes = extractCodes(codesText);
+  // Проверяем формат: "/addcodes КОД КОЛИЧЕСТВО" или "/addcodes КОД"
+  const parts = params.split(/\s+/);
+  
+  if (parts.length === 0) {
+    return ctx.reply('❌ Формат: /addcodes КОД [КОЛИЧЕСТВО]\nПример: /addcodes ABC123 2');
+  }
+  
+  // Если указано количество (последний параметр число)
+  const lastPart = parts[parts.length - 1];
+  let usageCount = 1;
+  let codeText = params;
+  
+  if (/^\d+$/.test(lastPart)) {
+    usageCount = parseInt(lastPart);
+    if (usageCount < 1 || usageCount > 4) {
+      return ctx.reply('❌ Количество использований должно быть от 1 до 4');
+    }
+    // Убираем число из текста
+    codeText = parts.slice(0, -1).join(' ');
+  }
+  
+  // Извлекаем код
+  const codes = extractCodes(codeText);
   
   if (codes.length === 0) {
     const msg = language === 'en' ? '❌ No valid codes found' : '❌ Не найдено валидных кодов';
     return ctx.reply(msg);
   }
   
-  await DB.addCodesToPool(codes, 'admin');
+  const code = codes[0];
   
-  const codesList = codes.join(', ');
+  // Добавляем с указанным количеством использований
+  const addedCount = await DB.addCodesToPoolWithLimit(code, 'admin', usageCount);
+  
+  if (addedCount === 0) {
+    return ctx.reply(`❌ Код ${code} уже исчерпал лимит использований (4 макс)`);
+  }
+  
   const msg = language === 'en'
-    ? `✅ Added ${codes.length} code${codes.length > 1 ? 's' : ''} to pool:\n\`${codesList}\``
-    : `✅ Добавлено ${codes.length} ${pluralize(codes.length, 'код', 'кода', 'кодов', language)} в пул:\n\`${codesList}\``;
+    ? `✅ Added code to pool:\nCode: \`${code}\`\nUses: ${addedCount} (added ${addedCount} times)`
+    : `✅ Добавлен код в пул:\nКод: \`${code}\`\nИспользований: ${addedCount} (добавлено ${addedCount} раз)`;
   
   return ctx.reply(msg, { parse_mode: 'Markdown' });
 }
