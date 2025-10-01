@@ -45,7 +45,7 @@ const MESSAGES = {
 
 ⏰ Дедлайн: 48 часов
 
-💝 Подпишись: ${config.telegram.channel} / ${config.telegram.soraUsername}`,
+💝 Подпишись: ${config.telegram.channel}`,
 
     waitingForCodes: (codesRequired, codesReturned) => {
       if (codesReturned > 0) {
@@ -330,7 +330,7 @@ Agree?`,
 
 ⏰ Deadline: 48h
 
-💝 Subscribe: ${config.telegram.channel} / ${config.telegram.soraUsername}`,
+💝 Subscribe: ${config.telegram.channel}`,
 
     waitingForCodes: (codesRequired) => `📨 **Sending Codes**
 

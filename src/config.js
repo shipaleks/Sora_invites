@@ -5,7 +5,7 @@ export default {
   telegram: {
     token: process.env.TELEGRAM_BOT_TOKEN,
     adminId: parseInt(process.env.ADMIN_TELEGRAM_ID),
-    channel: process.env.TELEGRAM_CHANNEL || '@humanagentinteraction',
+    channel: process.env.TELEGRAM_CHANNEL || 't.me/humanagentinteraction',
     soraUsername: process.env.SORA_USERNAME || '@shipaleks'
   },
   
