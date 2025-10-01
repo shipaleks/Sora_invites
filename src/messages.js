@@ -549,8 +549,6 @@ How many uses of this code are you willing to share?
 Choose quantity:`
   }
 };
-  }
-};
 
 function pluralizeRu(n, one, few, many) {
   if (n % 10 === 1 && n % 100 !== 11) return one;
