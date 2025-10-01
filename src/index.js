@@ -28,7 +28,9 @@ startSchedulers(bot);
 // Запуск бота
 if (config.app.nodeEnv === 'production' && config.app.webhookDomain) {
   // Production - Webhook
-  const webhookUrl = `https://${config.app.webhookDomain}/webhook`;
+  // Убираем возможные слэши в конце домена
+  const domain = config.app.webhookDomain.replace(/\/+$/, '');
+  const webhookUrl = `https://${domain}/webhook`;
   
   bot.telegram.setWebhook(webhookUrl).then(() => {
     console.log(`✅ Webhook set: ${webhookUrl}`);
