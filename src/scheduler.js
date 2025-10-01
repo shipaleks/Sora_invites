@@ -108,8 +108,8 @@ function startReminderScheduler(bot) {
 }
 
 function startQueueProcessor(bot) {
-  // Проверка очереди каждые 5 минут
-  cron.schedule('*/5 * * * *', async () => {
+  // Проверка очереди каждую минуту (было: каждые 5 минут)
+  cron.schedule('* * * * *', async () => {
     console.log('[Scheduler] Processing queue...');
     
     try {
@@ -122,28 +122,43 @@ function startQueueProcessor(bot) {
       }
       
       try {
-        const poolSize = await DB.getPoolSize();
-        if (poolSize === 0) {
-          console.log('[Scheduler] No codes available');
-          return;
+        let processed = 0;
+        
+        // Обрабатываем ВСЮ очередь пока есть коды
+        while (true) {
+          const poolSize = await DB.getPoolSize();
+          if (poolSize === 0) {
+            if (processed > 0) {
+              console.log(`[Scheduler] No more codes available (processed ${processed} invites)`);
+            }
+            break;
+          }
+          
+          const nextUser = await DB.getNextInQueue();
+          if (!nextUser) {
+            if (processed > 0) {
+              console.log(`[Scheduler] Queue empty (processed ${processed} invites)`);
+            }
+            break;
+          }
+          
+          const availableCode = await DB.getAvailableCode();
+          if (!availableCode) {
+            console.log(`[Scheduler] No available codes (processed ${processed} invites)`);
+            break;
+          }
+          
+          // Отправить инвайт
+          await processNextInvite(bot, nextUser.telegram_id, availableCode);
+          processed++;
+          
+          // Задержка между отправками (защита от rate limit)
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
         
-        const nextUser = await DB.getNextInQueue();
-        if (!nextUser) {
-          console.log('[Scheduler] Queue is empty');
-          return;
+        if (processed > 0) {
+          console.log(`[Scheduler] Successfully processed ${processed} invites`);
         }
-        
-        const availableCode = await DB.getAvailableCode();
-        if (!availableCode) {
-          console.log('[Scheduler] No available codes');
-          return;
-        }
-        
-        // Отправить инвайт
-        await processNextInvite(bot, nextUser.telegram_id, availableCode);
-        
-        console.log('[Scheduler] Queue processing completed');
       } finally {
         // Всегда освобождаем лок
         await DB.releaseLock('queue_processor');
