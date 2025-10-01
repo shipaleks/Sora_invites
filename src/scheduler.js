@@ -107,12 +107,22 @@ function startReminderScheduler(bot) {
   console.log('[Scheduler] Reminder scheduler initialized');
 }
 
+let isProcessingQueue = false; // Лок для предотвращения одновременной обработки
+
 function startQueueProcessor(bot) {
   // Проверка очереди каждые 5 минут
   cron.schedule('*/5 * * * *', async () => {
     console.log('[Scheduler] Processing queue...');
     
+    // Проверка лока
+    if (isProcessingQueue) {
+      console.log('[Scheduler] Already processing, skipping...');
+      return;
+    }
+    
     try {
+      isProcessingQueue = true;
+      
       const poolSize = await DB.getPoolSize();
       if (poolSize === 0) {
         console.log('[Scheduler] No codes available');
@@ -137,6 +147,8 @@ function startQueueProcessor(bot) {
       console.log('[Scheduler] Queue processing completed');
     } catch (error) {
       console.error('[Scheduler] Queue processing error:', error);
+    } finally {
+      isProcessingQueue = false;
     }
   });
   
@@ -151,7 +163,17 @@ async function processNextInvite(bot, userId, codeObj) {
       return;
     }
     
+    // КРИТИЧЕСКАЯ ПРОВЕРКА: Пользователь уже получил инвайт?
+    if (user.status === 'received' || user.status === 'completed') {
+      console.log(`[Queue] User ${userId} already has invite, removing from queue`);
+      await DB.removeFromQueue(userId);
+      return;
+    }
+    
     const MESSAGES = getMessages(user.language || 'ru');
+    
+    // ВАЖНО: Сначала удаляем из очереди, потом отправляем
+    await DB.removeFromQueue(userId);
     
     // Определяем является ли пользователь из первых 10
     const count = await DB.incrementFirst10Count();
@@ -167,7 +189,6 @@ async function processNextInvite(bot, userId, codeObj) {
     });
     
     await DB.markCodeAsSent(codeObj.id, userId);
-    await DB.removeFromQueue(userId);
     
     await bot.telegram.sendMessage(
       userId,
