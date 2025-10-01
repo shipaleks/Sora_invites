@@ -206,7 +206,7 @@ export function registerCallbacks(bot) {
     });
   });
 
-  // Выбор количества использований
+  // Выбор количества использований (обычный возврат)
   bot.action(/^usage_([1-4])$/, async (ctx) => {
     await ctx.answerCbQuery();
     
@@ -277,6 +277,73 @@ You're all set! 🎉`
       }
     } catch (error) {
       console.error('Error processing usage choice:', error);
+      await ctx.reply('❌ Произошла ошибка. Попробуй еще раз.');
+    }
+  });
+
+  // Выбор количества использований (пожертвование)
+  bot.action(/^donation_usage_([1-4])$/, async (ctx) => {
+    await ctx.answerCbQuery();
+    
+    const userId = ctx.from.id;
+    const user = await DB.getUser(userId);
+    const usageCount = parseInt(ctx.match[1]);
+    
+    const MESSAGES = getMessages(user?.language || 'ru');
+    
+    if (!user || !user.pending_donation_code) {
+      return ctx.reply('❌ Ошибка: код не найден');
+    }
+    
+    const code = user.pending_donation_code;
+    
+    try {
+      // Добавляем код в пул как пожертвование
+      const addedCount = await DB.addCodesToPoolWithLimit(code, `donation:${user.telegram_id}`, usageCount);
+      
+      if (addedCount === 0) {
+        const msg = user.language === 'en'
+          ? '❌ This code has already been added to the pool'
+          : '❌ Этот код уже был добавлен в пул';
+        return ctx.reply(msg);
+      }
+      
+      // Обновляем флаги
+      await DB.updateUser(user.telegram_id, {
+        pending_donation_code: null,
+        awaiting_donation_usage: false
+      });
+      
+      const remaining = 4 - usageCount;
+      const msg = user.language === 'en'
+        ? `✅ **Thank you for your donation!**
+
+Code: \`${code}\`
+Donated uses: **${usageCount}**
+Your remaining uses: **${remaining}**
+
+Up to ${usageCount} people will be able to register thanks to you! 🎉`
+        : `✅ **Спасибо за пожертвование!**
+
+Код: \`${code}\`
+Пожертвовал: **${usageCount}** ${usageCount === 1 ? 'использование' : 'использований'}
+Осталось тебе: **${remaining}**
+
+До ${usageCount} ${usageCount === 1 ? 'человека' : 'человек'} смогут зарегистрироваться благодаря тебе! 🎉`;
+      
+      await ctx.editMessageText(msg, { parse_mode: 'Markdown' });
+      
+      // Уведомление админу
+      try {
+        await ctx.telegram.sendMessage(
+          config.telegram.adminId,
+          `💝 Пожертвование от @${user.username}:\nКод: ${code}\nИспользований: ${usageCount} (добавлено ${addedCount} раз)`
+        );
+      } catch (error) {
+        console.error('Admin notification failed:', error.message);
+      }
+    } catch (error) {
+      console.error('Error processing donation:', error);
       await ctx.reply('❌ Произошла ошибка. Попробуй еще раз.');
     }
   });

@@ -52,8 +52,8 @@ export function registerTextHandlers(bot) {
       return ctx.reply(MESSAGES.notInSystem, { parse_mode: 'Markdown' });
     }
     
-    // Если пользователь хочет пожертвовать коды
-    if (user.awaiting_donation) {
+    // Если пользователь хочет пожертвовать код
+    if (user.awaiting_donation || user.awaiting_donation_usage) {
       return handleDonation(ctx, user);
     }
     
@@ -178,46 +178,37 @@ async function handleDonation(ctx, user) {
   
   if (codes.length === 0) {
     const msg = user.language === 'en'
-      ? '❌ No valid codes found. Send codes in format:\n```\ncode1\ncode2\n```'
-      : '❌ Не найдено валидных кодов. Отправь коды в формате:\n```\nкод1\nкод2\n```';
+      ? '❌ No valid code found. Send your invite code from Sora.'
+      : '❌ Не найден валидный код. Отправь свой инвайт-код из Sora.';
     return ctx.reply(msg, { parse_mode: 'Markdown' });
   }
   
   try {
-    // Добавить в пул как донейшен (возвращает количество добавленных)
-    const addedCount = await DB.addCodesToPool(codes, `donation:${user.telegram_id}`);
+    // Сохраняем код для выбора количества использований
+    const code = codes[0];
     
-    if (addedCount === 0) {
-      const msg = user.language === 'en'
-        ? '❌ All codes are duplicates (already in pool)'
-        : '❌ Все коды дубликаты (уже есть в пуле)';
-      await DB.updateUser(user.telegram_id, { awaiting_donation: false });
-      return ctx.reply(msg, { parse_mode: 'Markdown' });
-    }
-    
-    // Обновить флаг
     await DB.updateUser(user.telegram_id, {
-      awaiting_donation: false
+      pending_donation_code: code,
+      awaiting_donation: false,
+      awaiting_donation_usage: true
     });
     
-    await ctx.reply(MESSAGES.donationReceived(addedCount, user.language), {
-      parse_mode: 'Markdown'
+    await ctx.reply(MESSAGES.chooseUsageCount(code), {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: MESSAGES.buttons.usage1, callback_data: 'donation_usage_1' }],
+          [{ text: MESSAGES.buttons.usage2, callback_data: 'donation_usage_2' }],
+          [{ text: MESSAGES.buttons.usage3, callback_data: 'donation_usage_3' }],
+          [{ text: MESSAGES.buttons.usage4, callback_data: 'donation_usage_4' }]
+        ]
+      }
     });
-
-    // Уведомление админу
-    try {
-      await ctx.telegram.sendMessage(
-        config.telegram.adminId,
-        `💝 Пожертвование от @${user.username}: ${codes.length} шт.`
-      );
-    } catch (error) {
-      console.error('Admin notification failed:', error.message);
-    }
   } catch (error) {
     console.error('Error processing donation:', error);
     const msg = user.language === 'en'
-      ? '❌ An error occurred while processing codes. Try again.'
-      : '❌ Произошла ошибка при обработке кодов. Попробуй еще раз.';
+      ? '❌ An error occurred while processing code. Try again.'
+      : '❌ Произошла ошибка при обработке кода. Попробуй еще раз.';
     await ctx.reply(msg);
   }
 }

@@ -247,26 +247,30 @@ ${poolSize > queueSize
     },
 
     donateCodesPrompt: (language) => language === 'en' 
-      ? `💝 **Donate Invite Codes**
+      ? `💝 **Donate Invite Code**
 
 Thank you for helping the community! 🙏
 
-**How to get codes from Sora:**
-• **Web:** Three dots (⋮) → Invite Friends → Copy code
+**How to get code from Sora:**
+• **Web:** Three dots (⋮) → Invite Friends → Copy code (6 chars)
 • **App:** "4 invites" → Share invite → Copy
 
-Send codes you want to donate (each on a new line or all at once).
+⚠️ **Remember:** You have 1 code with 4 uses (not 4 different codes!)
+
+Send your code, then choose how many uses to share.
 
 Your donation will help others get access to Sora faster!`
-      : `💝 **Пожертвовать инвайт-коды**
+      : `💝 **Пожертвовать инвайт-код**
 
 Спасибо, что помогаешь сообществу! 🙏
 
-**Как получить коды из Sora:**
-• **Веб:** Три точки (⋮) → Invite Friends → Copy code
+**Как получить код из Sora:**
+• **Веб:** Три точки (⋮) → Invite Friends → Copy code (6 символов)
 • **Приложение:** "4 invites" → Share invite → Copy
 
-Отправь коды, которые хочешь пожертвовать (каждый с новой строки или все сразу).
+⚠️ **Помни:** У тебя 1 код на 4 использования (не 4 разных кода!)
+
+Отправь свой код, потом выберешь сколькими использованиями поделиться.
 
 Твоё пожертвование поможет другим быстрее получить доступ к Sora!`,
 
