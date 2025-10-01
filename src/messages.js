@@ -530,8 +530,25 @@ Write to ${config.telegram.channel}`,
       donateCodes: '💝 Donate Codes',
       returnUnused: '↩️ Return Unused Invite',
       russian: '🇷🇺 Русский',
-      english: '🇬🇧 English'
-    }
+      english: '🇬🇧 English',
+      usage1: '1 person (keep 3 for me)',
+      usage2: '2 people (keep 2 for me)',
+      usage3: '3 people (keep 1 for me)',
+      usage4: '4 people (give all)'
+    },
+
+    chooseUsageCount: (code) => `✅ **Code accepted:** \`${code}\`
+
+How many uses of this code are you willing to share?
+
+💡 **Explanation:**
+• Code can be used 4 times
+• Each use = 1 person can register
+• Remainder stays with you for friends
+
+Choose quantity:`
+  }
+};
   }
 };
 

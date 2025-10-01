@@ -65,6 +65,14 @@ function startReminderScheduler(bot) {
               MESSAGES.finalWarning(codesRequired, user.codes_returned || 0) :
               MESSAGES.reminder(Math.round(hoursLeft), codesRequired, user.codes_returned || 0);
             
+            // Пропускаем если напоминание null (уже вернул код)
+            if (!message) {
+              await DB.updateUser(user.telegram_id, {
+                reminder_count: config.rules.reminderIntervals.length
+              });
+              break;
+            }
+            
             try {
               await bot.telegram.sendMessage(user.telegram_id, message, {
                 parse_mode: 'Markdown',
