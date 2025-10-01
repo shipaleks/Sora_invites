@@ -28,12 +28,24 @@ startSchedulers(bot);
 // Запуск бота
 if (config.app.nodeEnv === 'production' && config.app.webhookDomain) {
   // Production - Webhook
-  // Убираем возможные слэши в конце домена
   const domain = config.app.webhookDomain.replace(/\/+$/, '');
   const webhookUrl = `https://${domain}/webhook`;
   
-  bot.telegram.setWebhook(webhookUrl).then(() => {
-    console.log(`✅ Webhook set: ${webhookUrl}`);
+  // Проверяем текущий webhook перед установкой
+  bot.telegram.getWebhookInfo().then(info => {
+    if (info.url !== webhookUrl) {
+      return bot.telegram.setWebhook(webhookUrl);
+    } else {
+      console.log(`✅ Webhook already set: ${webhookUrl}`);
+    }
+  }).then(() => {
+    console.log(`✅ Webhook ready: ${webhookUrl}`);
+  }).catch(err => {
+    if (err.response?.error_code === 429) {
+      console.warn('⚠️ Rate limited, webhook will be set on next startup');
+    } else {
+      console.error('❌ Webhook error:', err.message);
+    }
   });
   
   bot.startWebhook('/webhook', null, config.app.port);
