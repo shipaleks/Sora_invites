@@ -18,8 +18,8 @@ export default {
   rules: {
     first10CodesRequired: 3,      // Первые 10 возвращают 3 кода
     regularCodesRequired: 2,      // Остальные возвращают 2 кода
-    deadlineHours: 48,            // Дедлайн для возврата
-    reminderIntervals: [24, 40, 47] // Напоминания (часы после получения)
+    deadlineHours: 72,            // Дедлайн для возврата (увеличен до 72ч)
+    reminderIntervals: [6, 24, 48] // Напоминания (6ч - первый код, 24ч, 48ч)
   },
   
   app: {

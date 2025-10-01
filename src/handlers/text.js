@@ -62,6 +62,24 @@ async function handleCodeSubmission(ctx, user) {
     return ctx.reply(msg, { parse_mode: 'Markdown' });
   }
   
+  // Защита: проверяем что пользователь не отправляет свой собственный код
+  const ownCode = user.invite_code_given?.toUpperCase();
+  const filteredCodes = codes.filter(code => code !== ownCode);
+  
+  if (filteredCodes.length < codes.length) {
+    const msg = user.language === 'en'
+      ? `⚠️ You cannot return your own invite code that you received!\n\nYour code: \`${ownCode}\`\nReturn codes that YOU generated in Sora after registration.`
+      : `⚠️ Нельзя возвращать свой собственный инвайт-код, который ты получил!\n\nТвой код: \`${ownCode}\`\nВозвращай коды, которые ТЕБЕ выдала Sora после регистрации.`;
+    
+    await ctx.reply(msg, { parse_mode: 'Markdown' });
+    
+    if (filteredCodes.length === 0) {
+      return; // Все коды были собственными
+    }
+  }
+  
+  const codes = filteredCodes;
+  
   // Определить сколько кодов нужно
   const allUsers = await DB.getAllUsers();
   const usersWithInvites = allUsers
