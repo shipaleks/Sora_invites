@@ -37,6 +37,11 @@ const MESSAGES = {
 1. Подключи американский VPN 🇺🇸
 2. Перейди на sora.com и зарегистрируйся
 3. После регистрации у тебя появится 4 инвайт-кода
+
+**Как вернуть коды:**
+• **Веб:** Три точки (⋮) → Invite Friends → Copy code
+• **Приложение:** "4 invites" → Share invite → Copy
+
 4. Вернись сюда и отправь **${codesRequired} кода** обратно
 
 ⏰ У тебя есть **48 часов** на возврат кодов
@@ -51,15 +56,21 @@ const MESSAGES = {
 
     waitingForCodes: (codesRequired) => `📨 **Отправка кодов**
 
-Отправь мне **${codesRequired} инвайт-кода** текстом.
+Отправь мне **${codesRequired} инвайт-кода** из Sora.
 
-Формат: каждый код с новой строки
-\`\`\`
-код1
-код2${codesRequired === 3 ? '\nкод3' : ''}
-\`\`\`
+**Для веба (основной способ):**
+1. Правый нижний угол → три точки (⋮)
+2. Invite Friends
+3. Copy code (код из 6 знаков)
+4. Вставь сюда и отправь
 
-Просто скопируй коды из Sora и отправь их мне.`,
+**Для мобильного приложения:**
+1. "4 invites" в левом верхнем углу
+2. Share invite
+3. Copy (скопируется всё сообщение)
+4. Вставь сюда — бот сам найдёт код
+
+Отправь ${codesRequired} ${codesRequired === 1 ? 'код' : 'кода'}, каждый с новой строки или все сразу.`,
 
     codesReceived: (totalCodes) => `✅ **Спасибо! Коды приняты!**
 
@@ -177,26 +188,22 @@ ${poolSize > queueSize
 
 Thank you for helping the community! 🙏
 
-Send invite codes you want to donate to the pool.
-Each code on a new line:
-\`\`\`
-code1
-code2
-code3
-\`\`\`
+**How to get codes from Sora:**
+• **Web:** Three dots (⋮) → Invite Friends → Copy code
+• **App:** "4 invites" → Share invite → Copy
+
+Send codes you want to donate (each on a new line or all at once).
 
 Your donation will help others get access to Sora faster!`
       : `💝 **Пожертвовать инвайт-коды**
 
 Спасибо, что помогаешь сообществу! 🙏
 
-Отправь инвайт-коды, которые хочешь пожертвовать в общий пул.
-Каждый код с новой строки:
-\`\`\`
-код1
-код2
-код3
-\`\`\`
+**Как получить коды из Sora:**
+• **Веб:** Три точки (⋮) → Invite Friends → Copy code
+• **Приложение:** "4 invites" → Share invite → Copy
+
+Отправь коды, которые хочешь пожертвовать (каждый с новой строки или все сразу).
 
 Твоё пожертвование поможет другим быстрее получить доступ к Sora!`,
 
@@ -248,6 +255,11 @@ Do you agree with the terms?`,
 1. Connect to a US VPN 🇺🇸
 2. Go to sora.com and register
 3. After registration, you'll receive 4 invite codes
+
+**How to return codes:**
+• **Web:** Three dots (⋮) → Invite Friends → Copy code
+• **App:** "4 invites" → Share invite → Copy
+
 4. Come back here and send **${codesRequired} codes** back
 
 ⏰ You have **48 hours** to return the codes
@@ -262,15 +274,21 @@ Do you agree with the terms?`,
 
     waitingForCodes: (codesRequired) => `📨 **Sending Codes**
 
-Send me **${codesRequired} invite code${codesRequired > 1 ? 's' : ''}** as text.
+Send me **${codesRequired} invite code${codesRequired > 1 ? 's' : ''}** from Sora.
 
-Format: each code on a new line
-\`\`\`
-code1
-code2${codesRequired === 3 ? '\ncode3' : ''}
-\`\`\`
+**For web (main method):**
+1. Bottom right corner → three dots (⋮)
+2. Invite Friends
+3. Copy code (6 characters)
+4. Paste here and send
 
-Just copy the codes from Sora and send them to me.`,
+**For mobile app:**
+1. "4 invites" in top left corner
+2. Share invite
+3. Copy (entire message will be copied)
+4. Paste here — bot will extract the code
+
+Send ${codesRequired} code${codesRequired > 1 ? 's' : ''}, each on a new line or all at once.`,
 
     codesReceived: (totalCodes) => `✅ **Thank you! Codes accepted!**
 
