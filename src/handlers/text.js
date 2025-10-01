@@ -47,25 +47,24 @@ export function registerTextHandlers(bot) {
       return; // Остальные команды обрабатываются в commands.js
     }
     
-    // Обработка возврата кодов
     if (!user) {
       return ctx.reply(MESSAGES.notInSystem, { parse_mode: 'Markdown' });
     }
     
-    // Проверяем флаги в правильном порядке
+    // УПРОЩЁННАЯ ЛОГИКА: только 3 типа обработки
     
-    // 1. Возврат неиспользованного инвайта (специфичный флаг)
-    if (user.awaiting_unused_return) {
+    // 1. Возврат неиспользованного (только если флаг установлен)
+    if (user.awaiting_unused_return === true) {
       return handleUnusedReturn(ctx, user);
     }
     
-    // 2. Пожертвование (специфичный флаг)
-    if (user.awaiting_donation || user.awaiting_donation_usage) {
+    // 2. Пожертвование (только если флаг установлен)
+    if (user.awaiting_donation === true || user.awaiting_donation_usage === true) {
       return handleDonation(ctx, user);
     }
     
-    // 3. Обычный возврат кодов после регистрации (awaiting_codes ИЛИ статус received)
-    if (user.awaiting_codes || user.status === 'received') {
+    // 3. Обычный возврат кодов (если получил инвайт и ещё не вернул)
+    if (user.status === 'received' && user.codes_returned === 0) {
       return handleCodeSubmission(ctx, user);
     }
   });
@@ -78,80 +77,29 @@ async function handleCodeSubmission(ctx, user) {
   const MESSAGES = getMessages(user.language || 'ru');
   
   if (codes.length === 0) {
-    const msg = user.language === 'en'
-      ? '❌ No valid codes found. Send codes in format:\n```\ncode1\ncode2\n```'
-      : '❌ Не найдено валидных кодов. Отправь коды в формате:\n```\nкод1\nкод2\n```';
-    return ctx.reply(msg, { parse_mode: 'Markdown' });
+    return ctx.reply('❌ Не найден код. Отправь свой код из Sora (6 символов).', { 
+      parse_mode: 'Markdown' 
+    });
   }
   
-  // Защита: проверяем что пользователь НЕ отправляет код который получил от БОТА
+  const code = codes[0]; // Берём первый код
   const botGivenCode = user.invite_code_given?.toUpperCase();
-  const validCodes = codes.filter(code => code !== botGivenCode);
   
-  if (validCodes.length < codes.length) {
-    // Пользователь отправил код который получил от бота
-    const MESSAGES = getMessages(user.language || 'ru');
-    
-    // Предлагаем вернуть неиспользованный инвайт (если не зарегистрировался)
-    await ctx.reply(MESSAGES.ownCodeDetected(botGivenCode, user.language), {
-      parse_mode: 'Markdown',
-      reply_markup: {
-        inline_keyboard: [[
-          { text: MESSAGES.buttons.returnUnused, callback_data: 'return_unused' }
-        ]]
-      }
-    });
-    
-    if (validCodes.length === 0) {
-      return; // Отправил только код от бота
-    }
+  // ЕДИНСТВЕННАЯ ПРОВЕРКА: код НЕ должен быть тем что получил от бота
+  if (code === botGivenCode) {
+    return ctx.reply(
+      `⚠️ Это код который ты получил ОТ БОТА для регистрации: \`${botGivenCode}\`\n\n` +
+      `Отправь код который выдала ТЕБЕ Sora ПОСЛЕ регистрации (он другой).`,
+      { parse_mode: 'Markdown' }
+    );
   }
-  
-  // Определить сколько кодов нужно
-  const allUsers = await DB.getAllUsers();
-  const usersWithInvites = allUsers
-    .filter(u => u.invite_sent_at)
-    .sort((a, b) => {
-      const timeA = a.invite_sent_at?.toDate?.() || new Date(0);
-      const timeB = b.invite_sent_at?.toDate?.() || new Date(0);
-      return timeA - timeB;
-    });
-  
-  const userIndex = usersWithInvites.findIndex(u => u.telegram_id === user.telegram_id) + 1;
-  const codesRequired = userIndex <= 10 ? 
-    config.rules.first10CodesRequired : 
-    config.rules.regularCodesRequired;
-  
-  const neededCodes = codesRequired - user.codes_returned;
-  
-  if (neededCodes <= 0) {
-    const msg = user.language === 'en'
-      ? '✅ You\'ve already returned all required codes. Thank you!'
-      : '✅ Ты уже вернул все необходимые коды. Спасибо!';
-    return ctx.reply(msg, { parse_mode: 'Markdown' });
-  }
-  
-  if (validCodes.length === 0) {
-    const msg = user.language === 'en'
-      ? '❌ No valid codes found.'
-      : '❌ Не найдено валидных кодов.';
-    return ctx.reply(msg, { parse_mode: 'Markdown' });
-  }
-  
-  // Принимаем сколько есть (не требуем все сразу)
-  const codesToAdd = validCodes.slice(0, neededCodes);
   
   try {
-    // Сохраняем код временно для выбора количества использований
-    const code = codesToAdd[0];
-    
+    // Сохраняем код для выбора количества использований
     await DB.updateUser(user.telegram_id, {
       pending_code: code,
-      awaiting_codes: false,
       awaiting_usage_choice: true
     });
-    
-    const MESSAGES = getMessages(user.language || 'ru');
     
     await ctx.reply(MESSAGES.chooseUsageCount(code), {
       parse_mode: 'Markdown',
@@ -165,11 +113,8 @@ async function handleCodeSubmission(ctx, user) {
       }
     });
   } catch (error) {
-    console.error('Error processing codes:', error);
-    const msg = user.language === 'en'
-      ? '❌ An error occurred while processing codes. Try again.'
-      : '❌ Произошла ошибка при обработке кодов. Попробуй еще раз.';
-    await ctx.reply(msg);
+    console.error('Error processing code:', error);
+    await ctx.reply('❌ Ошибка. Попробуй ещё раз.');
   }
 }
 
@@ -180,14 +125,10 @@ async function handleDonation(ctx, user) {
   const MESSAGES = getMessages(user.language || 'ru');
   
   if (codes.length === 0) {
-    const msg = user.language === 'en'
-      ? '❌ No valid code found. Send your invite code from Sora.'
-      : '❌ Не найден валидный код. Отправь свой инвайт-код из Sora.';
-    return ctx.reply(msg, { parse_mode: 'Markdown' });
+    return ctx.reply('❌ Не найден код.', { parse_mode: 'Markdown' });
   }
   
   try {
-    // Сохраняем код для выбора количества использований
     const code = codes[0];
     
     await DB.updateUser(user.telegram_id, {
@@ -209,154 +150,8 @@ async function handleDonation(ctx, user) {
     });
   } catch (error) {
     console.error('Error processing donation:', error);
-    const msg = user.language === 'en'
-      ? '❌ An error occurred while processing code. Try again.'
-      : '❌ Произошла ошибка при обработке кода. Попробуй еще раз.';
-    await ctx.reply(msg);
+    await ctx.reply('❌ Ошибка.');
   }
-}
-
-async function handleAdminAddCodes(ctx, text, language) {
-  const params = text.replace('/addcodes ', '').trim();
-  
-  // Проверяем формат: "/addcodes КОД КОЛИЧЕСТВО" или "/addcodes КОД"
-  const parts = params.split(/\s+/);
-  
-  if (parts.length === 0) {
-    return ctx.reply('❌ Формат: /addcodes КОД [КОЛИЧЕСТВО]\nПример: /addcodes ABC123 2');
-  }
-  
-  // Если указано количество (последний параметр число)
-  const lastPart = parts[parts.length - 1];
-  let usageCount = 1;
-  let codeText = params;
-  
-  if (/^\d+$/.test(lastPart)) {
-    usageCount = parseInt(lastPart);
-    if (usageCount < 1 || usageCount > 4) {
-      return ctx.reply('❌ Количество использований должно быть от 1 до 4');
-    }
-    // Убираем число из текста
-    codeText = parts.slice(0, -1).join(' ');
-  }
-  
-  // Извлекаем код
-  const codes = extractCodes(codeText);
-  
-  if (codes.length === 0) {
-    const msg = language === 'en' ? '❌ No valid codes found' : '❌ Не найдено валидных кодов';
-    return ctx.reply(msg);
-  }
-  
-  const code = codes[0];
-  
-  // Добавляем с указанным количеством использований
-  const addedCount = await DB.addCodesToPoolWithLimit(code, 'admin', usageCount);
-  
-  if (addedCount === 0) {
-    return ctx.reply(`❌ Код ${code} уже исчерпал лимит использований (4 макс)`);
-  }
-  
-  const msg = language === 'en'
-    ? `✅ Added code to pool:\nCode: \`${code}\`\nUses: ${addedCount} (added ${addedCount} times)`
-    : `✅ Добавлен код в пул:\nКод: \`${code}\`\nИспользований: ${addedCount} (добавлено ${addedCount} раз)`;
-  
-  return ctx.reply(msg, { parse_mode: 'Markdown' });
-}
-
-async function handleAdminRemoveCode(ctx, text, language) {
-  const code = text.replace('/removecode ', '').trim().toUpperCase();
-  
-  if (!code || code.length < 5) {
-    const msg = language === 'en' ? '❌ Specify code to remove' : '❌ Укажи код для удаления';
-    return ctx.reply(msg);
-  }
-  
-  const removed = await DB.removeCodeFromPool(code);
-  
-  if (removed) {
-    const msg = language === 'en'
-      ? `✅ Code removed from pool: \`${code}\``
-      : `✅ Код удалён из пула: \`${code}\``;
-    return ctx.reply(msg, { parse_mode: 'Markdown' });
-  } else {
-    const msg = language === 'en'
-      ? `❌ Code not found in pool: \`${code}\``
-      : `❌ Код не найден в пуле: \`${code}\``;
-    return ctx.reply(msg, { parse_mode: 'Markdown' });
-  }
-}
-
-async function handleClearPool(ctx, language) {
-  const count = await DB.clearAllAvailableCodes();
-  
-  const msg = language === 'en'
-    ? `✅ Cleared ${count} code${count !== 1 ? 's' : ''} from pool`
-    : `✅ Очищено ${count} ${pluralize(count, 'код', 'кода', 'кодов', language)} из пула`;
-  
-  return ctx.reply(msg);
-}
-
-async function handleClearQueue(ctx, language) {
-  const count = await DB.clearQueue();
-  
-  const msg = language === 'en'
-    ? `✅ Cleared ${count} user${count !== 1 ? 's' : ''} from queue`
-    : `✅ Очищено ${count} ${pluralize(count, 'пользователь', 'пользователя', 'пользователей', language)} из очереди`;
-  
-  return ctx.reply(msg);
-}
-
-async function handleResetAll(ctx, language) {
-  await ctx.reply('⚠️ Это удалит ВСЕ данные (пользователей, очередь, коды). Уверен? Отправь /confirmedreset');
-}
-
-async function handleFindUser(ctx, text) {
-  const userId = text.replace('/finduser ', '').trim();
-  
-  if (!userId) {
-    return ctx.reply('❌ Укажи ID пользователя: /finduser 12345');
-  }
-  
-  const user = await DB.getUser(userId);
-  
-  if (!user) {
-    return ctx.reply(`❌ Пользователь с ID ${userId} не найден`);
-  }
-  
-  const queuePos = await DB.getQueuePosition(userId);
-  
-  const info = `👤 **Пользователь найден**
-
-ID: \`${user.telegram_id}\`
-Username: @${user.username}
-Язык: ${user.language === 'en' ? 'English' : 'Русский'}
-Статус: ${user.status}
-Позиция в очереди: ${queuePos || 'Нет'}
-
-Получил инвайт: ${user.invite_code_given || 'Нет'}
-Вернул кодов: ${user.codes_returned}
-
-Дата регистрации: ${user.requested_at ? new Date(user.requested_at.toDate()).toLocaleString('ru-RU') : 'N/A'}
-Дата получения инвайта: ${user.invite_sent_at ? new Date(user.invite_sent_at.toDate()).toLocaleString('ru-RU') : 'N/A'}`;
-
-  return ctx.reply(info, { parse_mode: 'Markdown' });
-}
-
-async function handlePoolSize(ctx, language) {
-  const size = await DB.getPoolSize();
-  const msg = language === 'en'
-    ? `💎 Codes in pool: **${size}**`
-    : `💎 Кодов в пуле: **${size}**`;
-  return ctx.reply(msg, { parse_mode: 'Markdown' });
-}
-
-async function handleQueueSize(ctx, language) {
-  const size = await DB.getQueueSize();
-  const msg = language === 'en'
-    ? `👥 In queue: **${size}**`
-    : `👥 В очереди: **${size}**`;
-  return ctx.reply(msg, { parse_mode: 'Markdown' });
 }
 
 async function handleUnusedReturn(ctx, user) {
@@ -366,83 +161,175 @@ async function handleUnusedReturn(ctx, user) {
   const MESSAGES = getMessages(user.language || 'ru');
   
   if (codes.length === 0) {
-    const msg = user.language === 'en'
-      ? '❌ No valid codes found. Send the invite code you received.'
-      : '❌ Не найдено валидных кодов. Отправь инвайт-код, который получил.';
-    return ctx.reply(msg, { parse_mode: 'Markdown' });
+    return ctx.reply('❌ Не найден код.', { parse_mode: 'Markdown' });
   }
   
   const ownCode = user.invite_code_given?.toUpperCase();
   const returnedCode = codes[0];
   
-  // Проверяем что это именно его код
+  // Проверяем что это именно его код от бота
   if (returnedCode !== ownCode) {
-    const msg = user.language === 'en'
-      ? `❌ This is not your invite code.\n\nYour code: \`${ownCode}\`\nYou sent: \`${returnedCode}\``
-      : `❌ Это не твой инвайт-код.\n\nТвой код: \`${ownCode}\`\nТы отправил: \`${returnedCode}\``;
-    return ctx.reply(msg, { parse_mode: 'Markdown' });
+    return ctx.reply(
+      `❌ Это не твой код от бота.\n\nТвой код: \`${ownCode}\`\nТы отправил: \`${returnedCode}\``,
+      { parse_mode: 'Markdown' }
+    );
   }
   
   try {
-    // Возвращаем код обратно в пул (проверка дубликатов)
-    const addedCount = await DB.addCodesToPool([returnedCode], `unused:${user.telegram_id}`);
+    const addedCount = await DB.addCodesToPoolWithLimit(returnedCode, `unused:${user.telegram_id}`, 1);
     
     if (addedCount === 0) {
-      const msg = user.language === 'en'
-        ? '❌ This code is already in the pool'
-        : '❌ Этот код уже есть в пуле';
       await DB.updateUser(user.telegram_id, { awaiting_unused_return: false });
-      return ctx.reply(msg, { parse_mode: 'Markdown' });
+      return ctx.reply('❌ Этот код уже в пуле', { parse_mode: 'Markdown' });
     }
     
-    // Обновляем статус пользователя
     await DB.updateUser(user.telegram_id, {
       status: 'returned_unused',
       awaiting_unused_return: false,
-      codes_returned: 0 // Сбрасываем, т.к. не требуем возврата
+      codes_returned: 0
     });
     
     await ctx.reply(MESSAGES.unusedReturned(returnedCode, user.language), {
       parse_mode: 'Markdown'
     });
     
-    // Уведомление админу
     try {
       await ctx.telegram.sendMessage(
         config.telegram.adminId,
-        `↩️ Возврат неиспользованного инвайта от @${user.username}\nКод: ${returnedCode}`
+        `↩️ Возврат неиспользованного от @${user.username}\nКод: ${returnedCode}`
       );
     } catch (error) {
       console.error('Admin notification failed:', error.message);
     }
   } catch (error) {
     console.error('Error processing unused return:', error);
-    const msg = user.language === 'en'
-      ? '❌ An error occurred. Try again.'
-      : '❌ Произошла ошибка. Попробуй еще раз.';
-    await ctx.reply(msg);
+    await ctx.reply('❌ Ошибка.');
   }
+}
+
+async function handleAdminAddCodes(ctx, text, language) {
+  const params = text.replace('/addcodes ', '').trim();
+  const parts = params.split(/\s+/);
+  
+  if (parts.length === 0) {
+    return ctx.reply('❌ Формат: /addcodes КОД [КОЛИЧЕСТВО]\nПример: /addcodes ABC123 2');
+  }
+  
+  const lastPart = parts[parts.length - 1];
+  let usageCount = 1;
+  let codeText = params;
+  
+  if (/^\d+$/.test(lastPart)) {
+    usageCount = parseInt(lastPart);
+    if (usageCount < 1 || usageCount > 4) {
+      return ctx.reply('❌ Количество: 1-4');
+    }
+    codeText = parts.slice(0, -1).join(' ');
+  }
+  
+  const codes = extractCodes(codeText);
+  
+  if (codes.length === 0) {
+    return ctx.reply('❌ Не найден код');
+  }
+  
+  const code = codes[0];
+  const addedCount = await DB.addCodesToPoolWithLimit(code, 'admin', usageCount);
+  
+  if (addedCount === 0) {
+    return ctx.reply(`❌ Код ${code} уже исчерпал лимит (4 макс)`);
+  }
+  
+  return ctx.reply(`✅ Добавлен:\nКод: \`${code}\`\nИспользований: ${addedCount}`, {
+    parse_mode: 'Markdown'
+  });
+}
+
+async function handleAdminRemoveCode(ctx, text, language) {
+  const code = text.replace('/removecode ', '').trim().toUpperCase();
+  
+  if (!code || code.length < 5) {
+    return ctx.reply('❌ Укажи код');
+  }
+  
+  const removed = await DB.removeCodeFromPool(code);
+  
+  if (removed) {
+    return ctx.reply(`✅ Удалён: \`${code}\``, { parse_mode: 'Markdown' });
+  } else {
+    return ctx.reply(`❌ Не найден: \`${code}\``, { parse_mode: 'Markdown' });
+  }
+}
+
+async function handleClearPool(ctx, language) {
+  const count = await DB.clearAllAvailableCodes();
+  return ctx.reply(`✅ Очищено ${count} ${pluralize(count, 'код', 'кода', 'кодов', language)} из пула`);
+}
+
+async function handleClearQueue(ctx, language) {
+  const count = await DB.clearQueue();
+  return ctx.reply(`✅ Очищено ${count} ${pluralize(count, 'пользователь', 'пользователя', 'пользователей', language)} из очереди`);
+}
+
+async function handleResetAll(ctx, language) {
+  await ctx.reply('⚠️ Это удалит ВСЕ данные. Уверен? Отправь /confirmedreset');
+}
+
+async function handleFindUser(ctx, text) {
+  const userId = text.replace('/finduser ', '').trim();
+  
+  if (!userId) {
+    return ctx.reply('❌ Укажи ID: /finduser 12345');
+  }
+  
+  const user = await DB.getUser(userId);
+  
+  if (!user) {
+    return ctx.reply(`❌ Пользователь ${userId} не найден`);
+  }
+  
+  const queuePos = await DB.getQueuePosition(userId);
+  
+  const info = `👤 Пользователь
+
+ID: \`${user.telegram_id}\`
+Username: @${user.username}
+Статус: ${user.status}
+Очередь: ${queuePos || '-'}
+
+Получил код: ${user.invite_code_given || '-'}
+Вернул: ${user.codes_returned}`;
+
+  return ctx.reply(info, { parse_mode: 'Markdown' });
+}
+
+async function handlePoolSize(ctx, language) {
+  const size = await DB.getPoolSize();
+  return ctx.reply(`💎 Кодов в пуле: **${size}**`, { parse_mode: 'Markdown' });
+}
+
+async function handleQueueSize(ctx, language) {
+  const size = await DB.getQueueSize();
+  return ctx.reply(`👥 В очереди: **${size}**`, { parse_mode: 'Markdown' });
 }
 
 async function handleBroadcast(ctx, text, bot) {
   const message = text.replace('/broadcast ', '');
   
   if (!message) {
-    return ctx.reply('❌ Укажи текст для рассылки');
+    return ctx.reply('❌ Укажи текст');
   }
   
   const allUsers = await DB.getAllUsers();
   let successCount = 0;
   let failCount = 0;
   
-  await ctx.reply(`🚀 Начинаю рассылку для ${allUsers.length} пользователей...`);
+  await ctx.reply(`🚀 Рассылка для ${allUsers.length} пользователей...`);
   
   for (const user of allUsers) {
     try {
       await bot.telegram.sendMessage(user.telegram_id, message, { parse_mode: 'Markdown' });
       successCount++;
-      
-      // Задержка чтобы не словить rate limit
       await new Promise(resolve => setTimeout(resolve, 50));
     } catch (error) {
       failCount++;
@@ -450,9 +337,5 @@ async function handleBroadcast(ctx, text, bot) {
     }
   }
   
-  return ctx.reply(
-    `✅ Рассылка завершена!\n` +
-    `Успешно: ${successCount}\n` +
-    `Ошибок: ${failCount}`
-  );
+  return ctx.reply(`✅ Готово!\nУспешно: ${successCount}\nОшибок: ${failCount}`);
 }
