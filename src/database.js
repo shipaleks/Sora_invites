@@ -141,9 +141,29 @@ export const DB = {
 
   // === INVITE POOL ===
   async addCodesToPool(codes, submittedBy) {
-    const batch = db.batch();
+    // Проверяем дубликаты в пуле
+    const uniqueCodes = [];
     
     for (const code of codes) {
+      const existing = await db.collection('invite_pool')
+        .where('code', '==', code)
+        .limit(1)
+        .get();
+      
+      if (existing.empty) {
+        uniqueCodes.push(code);
+      } else {
+        console.log(`[Pool] Duplicate code skipped: ${code}`);
+      }
+    }
+    
+    if (uniqueCodes.length === 0) {
+      return 0; // Все коды были дубликатами
+    }
+    
+    const batch = db.batch();
+    
+    for (const code of uniqueCodes) {
       const codeRef = db.collection('invite_pool').doc();
       batch.set(codeRef, {
         code: code,
@@ -158,8 +178,10 @@ export const DB = {
     
     // Обновить счетчик в настройках
     await this.updateSystemSettings({
-      codes_in_pool: FieldValue.increment(codes.length)
+      codes_in_pool: FieldValue.increment(uniqueCodes.length)
     });
+    
+    return uniqueCodes.length;
   },
 
   async getAvailableCode() {

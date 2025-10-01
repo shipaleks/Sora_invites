@@ -25,6 +25,9 @@ export function registerTextHandlers(bot) {
         if (text === '/clearpool') {
           return handleClearPool(ctx, user?.language || 'ru');
         }
+        if (text.startsWith('/finduser ')) {
+          return handleFindUser(ctx, text);
+        }
         if (text === '/poolsize') {
           return handlePoolSize(ctx, user?.language || 'ru');
         }
@@ -119,20 +122,28 @@ async function handleCodeSubmission(ctx, user) {
     return ctx.reply(msg, { parse_mode: 'Markdown' });
   }
   
-  if (validCodes.length < neededCodes) {
+  if (validCodes.length === 0) {
     const msg = user.language === 'en'
-      ? `❌ Need **${neededCodes}** code${neededCodes > 1 ? 's' : ''}.\nOnly **${validCodes.length}** valid sent.`
-      : `❌ Нужно **${neededCodes}** ${pluralize(neededCodes, 'код', 'кода', 'кодов', user.language)}.\nОтправлено только **${validCodes.length}** валидных.`;
+      ? '❌ No valid codes found.'
+      : '❌ Не найдено валидных кодов.';
     return ctx.reply(msg, { parse_mode: 'Markdown' });
   }
   
+  // Принимаем сколько есть (не требуем все сразу)
   const codesToAdd = validCodes.slice(0, neededCodes);
   
   try {
-    // Добавить в пул
-    await DB.addCodesToPool(codesToAdd, user.telegram_id);
+    // Добавить в пул (возвращает количество реально добавленных)
+    const addedCount = await DB.addCodesToPool(codesToAdd, user.telegram_id);
     
-    const newTotal = user.codes_returned + codesToAdd.length;
+    if (addedCount === 0) {
+      const msg = user.language === 'en'
+        ? '❌ All codes are duplicates (already in pool)'
+        : '❌ Все коды дубликаты (уже есть в пуле)';
+      return ctx.reply(msg, { parse_mode: 'Markdown' });
+    }
+    
+    const newTotal = user.codes_returned + addedCount;
     
     await DB.updateUser(user.telegram_id, {
       codes_returned: newTotal,
@@ -177,15 +188,23 @@ async function handleDonation(ctx, user) {
   }
   
   try {
-    // Добавить в пул как донейшен
-    await DB.addCodesToPool(codes, `donation:${user.telegram_id}`);
+    // Добавить в пул как донейшен (возвращает количество добавленных)
+    const addedCount = await DB.addCodesToPool(codes, `donation:${user.telegram_id}`);
+    
+    if (addedCount === 0) {
+      const msg = user.language === 'en'
+        ? '❌ All codes are duplicates (already in pool)'
+        : '❌ Все коды дубликаты (уже есть в пуле)';
+      await DB.updateUser(user.telegram_id, { awaiting_donation: false });
+      return ctx.reply(msg, { parse_mode: 'Markdown' });
+    }
     
     // Обновить флаг
     await DB.updateUser(user.telegram_id, {
       awaiting_donation: false
     });
     
-    await ctx.reply(MESSAGES.donationReceived(codes.length, user.language), {
+    await ctx.reply(MESSAGES.donationReceived(addedCount, user.language), {
       parse_mode: 'Markdown'
     });
 
@@ -261,6 +280,38 @@ async function handleClearPool(ctx, language) {
   return ctx.reply(msg);
 }
 
+async function handleFindUser(ctx, text) {
+  const userId = text.replace('/finduser ', '').trim();
+  
+  if (!userId) {
+    return ctx.reply('❌ Укажи ID пользователя: /finduser 12345');
+  }
+  
+  const user = await DB.getUser(userId);
+  
+  if (!user) {
+    return ctx.reply(`❌ Пользователь с ID ${userId} не найден`);
+  }
+  
+  const queuePos = await DB.getQueuePosition(userId);
+  
+  const info = `👤 **Пользователь найден**
+
+ID: \`${user.telegram_id}\`
+Username: @${user.username}
+Язык: ${user.language === 'en' ? 'English' : 'Русский'}
+Статус: ${user.status}
+Позиция в очереди: ${queuePos || 'Нет'}
+
+Получил инвайт: ${user.invite_code_given || 'Нет'}
+Вернул кодов: ${user.codes_returned}
+
+Дата регистрации: ${user.requested_at ? new Date(user.requested_at.toDate()).toLocaleString('ru-RU') : 'N/A'}
+Дата получения инвайта: ${user.invite_sent_at ? new Date(user.invite_sent_at.toDate()).toLocaleString('ru-RU') : 'N/A'}`;
+
+  return ctx.reply(info, { parse_mode: 'Markdown' });
+}
+
 async function handlePoolSize(ctx, language) {
   const size = await DB.getPoolSize();
   const msg = language === 'en'
@@ -302,8 +353,16 @@ async function handleUnusedReturn(ctx, user) {
   }
   
   try {
-    // Возвращаем код обратно в пул
-    await DB.addCodesToPool([returnedCode], `unused:${user.telegram_id}`);
+    // Возвращаем код обратно в пул (проверка дубликатов)
+    const addedCount = await DB.addCodesToPool([returnedCode], `unused:${user.telegram_id}`);
+    
+    if (addedCount === 0) {
+      const msg = user.language === 'en'
+        ? '❌ This code is already in the pool'
+        : '❌ Этот код уже есть в пуле';
+      await DB.updateUser(user.telegram_id, { awaiting_unused_return: false });
+      return ctx.reply(msg, { parse_mode: 'Markdown' });
+    }
     
     // Обновляем статус пользователя
     await DB.updateUser(user.telegram_id, {
