@@ -180,6 +180,32 @@ export function registerCallbacks(bot) {
     });
   });
 
+  // Вернуть неиспользованный инвайт
+  bot.action('return_unused', async (ctx) => {
+    await ctx.answerCbQuery();
+    
+    const userId = ctx.from.id;
+    const user = await DB.getUser(userId);
+    
+    const MESSAGES = getMessages(user?.language || 'ru');
+    
+    if (!user || user.status !== 'received') {
+      const msg = user?.language === 'en' 
+        ? '❌ You haven\'t received an invite yet' 
+        : '❌ Ты ещё не получил инвайт';
+      return ctx.reply(msg, { parse_mode: 'Markdown' });
+    }
+    
+    await ctx.reply(MESSAGES.returnUnusedPrompt(user?.language || 'ru'), {
+      parse_mode: 'Markdown'
+    });
+    
+    // Устанавливаем флаг ожидания возврата неиспользованного
+    await DB.updateUser(userId, {
+      awaiting_unused_return: true
+    });
+  });
+
   // Отказ
   bot.action('cancel', async (ctx) => {
     await ctx.answerCbQuery();

@@ -42,6 +42,11 @@ export function registerTextHandlers(bot) {
       return handleDonation(ctx, user);
     }
     
+    // Если пользователь возвращает неиспользованный инвайт
+    if (user.awaiting_unused_return) {
+      return handleUnusedReturn(ctx, user);
+    }
+    
     // Если пользователь получил инвайт, принимаем коды
     if (user.status === 'received') {
       return handleCodeSubmission(ctx, user);
@@ -67,11 +72,17 @@ async function handleCodeSubmission(ctx, user) {
   const validCodes = codes.filter(code => code !== ownCode);
   
   if (validCodes.length < codes.length) {
-    const msg = user.language === 'en'
-      ? `⚠️ You cannot return your own invite code that you received!\n\nYour code: \`${ownCode}\`\nReturn codes that YOU generated in Sora after registration.`
-      : `⚠️ Нельзя возвращать свой собственный инвайт-код, который ты получил!\n\nТвой код: \`${ownCode}\`\nВозвращай коды, которые ТЕБЕ выдала Sora после регистрации.`;
+    const MESSAGES = getMessages(user.language || 'ru');
     
-    await ctx.reply(msg, { parse_mode: 'Markdown' });
+    // Предлагаем вернуть неиспользованный инвайт
+    await ctx.reply(MESSAGES.ownCodeDetected(ownCode, user.language), {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [[
+          { text: MESSAGES.buttons.returnUnused, callback_data: 'return_unused' }
+        ]]
+      }
+    });
     
     if (validCodes.length === 0) {
       return; // Все коды были собственными
@@ -224,6 +235,63 @@ async function handleQueueSize(ctx, language) {
     ? `👥 In queue: **${size}**`
     : `👥 В очереди: **${size}**`;
   return ctx.reply(msg, { parse_mode: 'Markdown' });
+}
+
+async function handleUnusedReturn(ctx, user) {
+  const text = ctx.message.text;
+  const codes = extractCodes(text);
+  
+  const MESSAGES = getMessages(user.language || 'ru');
+  
+  if (codes.length === 0) {
+    const msg = user.language === 'en'
+      ? '❌ No valid codes found. Send the invite code you received.'
+      : '❌ Не найдено валидных кодов. Отправь инвайт-код, который получил.';
+    return ctx.reply(msg, { parse_mode: 'Markdown' });
+  }
+  
+  const ownCode = user.invite_code_given?.toUpperCase();
+  const returnedCode = codes[0];
+  
+  // Проверяем что это именно его код
+  if (returnedCode !== ownCode) {
+    const msg = user.language === 'en'
+      ? `❌ This is not your invite code.\n\nYour code: \`${ownCode}\`\nYou sent: \`${returnedCode}\``
+      : `❌ Это не твой инвайт-код.\n\nТвой код: \`${ownCode}\`\nТы отправил: \`${returnedCode}\``;
+    return ctx.reply(msg, { parse_mode: 'Markdown' });
+  }
+  
+  try {
+    // Возвращаем код обратно в пул
+    await DB.addCodesToPool([returnedCode], `unused:${user.telegram_id}`);
+    
+    // Обновляем статус пользователя
+    await DB.updateUser(user.telegram_id, {
+      status: 'returned_unused',
+      awaiting_unused_return: false,
+      codes_returned: 0 // Сбрасываем, т.к. не требуем возврата
+    });
+    
+    await ctx.reply(MESSAGES.unusedReturned(returnedCode, user.language), {
+      parse_mode: 'Markdown'
+    });
+    
+    // Уведомление админу
+    try {
+      await ctx.telegram.sendMessage(
+        config.telegram.adminId,
+        `↩️ Возврат неиспользованного инвайта от @${user.username}\nКод: ${returnedCode}`
+      );
+    } catch (error) {
+      console.error('Admin notification failed:', error.message);
+    }
+  } catch (error) {
+    console.error('Error processing unused return:', error);
+    const msg = user.language === 'en'
+      ? '❌ An error occurred. Try again.'
+      : '❌ Произошла ошибка. Попробуй еще раз.';
+    await ctx.reply(msg);
+  }
 }
 
 async function handleBroadcast(ctx, text, bot) {

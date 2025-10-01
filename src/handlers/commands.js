@@ -36,6 +36,7 @@ export function registerCommands(bot) {
           inline_keyboard: [
             [{ text: MESSAGES.buttons.wantInvite, callback_data: 'want_invite' }],
             [{ text: MESSAGES.buttons.submitCodes, callback_data: 'submit_codes' }],
+            [{ text: MESSAGES.buttons.returnUnused, callback_data: 'return_unused' }],
             [{ text: MESSAGES.buttons.donateCodes, callback_data: 'donate_codes' }]
           ]
         },

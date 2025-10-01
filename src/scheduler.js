@@ -20,6 +20,8 @@ function startReminderScheduler(bot) {
       const usersWithInvites = await DB.getUsersWithStatus('received');
       
       for (const user of usersWithInvites) {
+        // Пропускаем тех, кто вернул неиспользованный инвайт
+        if (user.status === 'returned_unused') continue;
         if (!user.invite_sent_at) continue;
         
         const hoursElapsed = getHoursSince(user.invite_sent_at);

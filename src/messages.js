@@ -213,6 +213,7 @@ ${poolSize > queueSize
       cancel: '❌ Отказаться',
       submitCodes: '📨 Отправить коды',
       donateCodes: '💝 Пожертвовать коды',
+      returnUnused: '↩️ Вернуть неиспользованный инвайт',
       russian: '🇷🇺 Русский',
       english: '🇬🇧 English'
     },
@@ -251,7 +252,69 @@ Thanks to you, someone will get access to Sora! 🎉`
 
 ${count} ${pluralizeRu(count, 'код', 'кода', 'кодов')} успешно ${count === 1 ? 'добавлен' : 'добавлены'} в пул!
 
-Благодаря тебе кто-то получит доступ к Sora! 🎉`
+Благодаря тебе кто-то получит доступ к Sora! 🎉`,
+
+    returnUnusedPrompt: (language) => language === 'en'
+      ? `↩️ **Return Unused Invite**
+
+Did you get an invite from another source and don't need this one?
+
+You can return your unused invite code back to the pool.
+
+Send the invite code you received from this bot.
+
+✨ You won't be required to return any codes after this — we understand you didn't use our invite!`
+      : `↩️ **Вернуть неиспользованный инвайт**
+
+Получил инвайт из другого источника и этот не нужен?
+
+Можешь вернуть свой неиспользованный инвайт-код обратно в пул.
+
+Отправь инвайт-код, который получил от этого бота.
+
+✨ С тебя больше ничего не потребуется — мы понимаем, что ты не воспользовался нашим инвайтом!`,
+
+    unusedReturned: (code, language) => language === 'en'
+      ? `✅ **Thank you for your honesty!**
+
+Your unused invite code has been returned to the pool.
+
+Code: \`${code}\`
+
+Someone else will be able to use it now! 🎉
+
+You're free from any obligations. Thanks for being fair! 💚`
+      : `✅ **Спасибо за честность!**
+
+Твой неиспользованный инвайт-код возвращён в пул.
+
+Код: \`${code}\`
+
+Теперь его сможет использовать кто-то другой! 🎉
+
+С тебя больше ничего не требуется. Спасибо за честность! 💚`,
+
+    ownCodeDetected: (code, language) => language === 'en'
+      ? `⚠️ **You're trying to return your own invite code**
+
+Your code: \`${code}\`
+
+**Did you want to:**
+• Return your UNUSED invite? (got invite elsewhere) ↩️
+• Or return codes from Sora after registration? 📨
+
+If you didn't use this invite — click the button below.
+If you registered in Sora — send codes that Sora gave YOU (not this code).`
+      : `⚠️ **Ты пытаешься вернуть свой собственный инвайт-код**
+
+Твой код: \`${code}\`
+
+**Ты хотел:**
+• Вернуть НЕИСПОЛЬЗОВАННЫЙ инвайт? (получил инвайт в другом месте) ↩️
+• Или вернуть коды от Sora после регистрации? 📨
+
+Если ты не использовал этот инвайт — нажми кнопку ниже.
+Если ты зарегистрировался в Sora — отправь коды, которые выдала ТЕБЕ Sora (не этот код).`
   },
 
   en: {
@@ -439,6 +502,7 @@ Write to ${config.telegram.channel}`,
       cancel: '❌ Cancel',
       submitCodes: '📨 Submit Codes',
       donateCodes: '💝 Donate Codes',
+      returnUnused: '↩️ Return Unused Invite',
       russian: '🇷🇺 Русский',
       english: '🇬🇧 English'
     }
