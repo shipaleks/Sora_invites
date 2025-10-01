@@ -369,6 +369,47 @@ export const DB = {
     await this.updateSystemSettings({
       total_users: FieldValue.increment(1)
     });
+  },
+
+  // === DISTRIBUTED LOCK ===
+  async acquireLock(lockName, ttlSeconds = 60) {
+    const lockRef = db.collection('locks').doc(lockName);
+    
+    try {
+      await db.runTransaction(async (transaction) => {
+        const lockDoc = await transaction.get(lockRef);
+        
+        if (lockDoc.exists) {
+          const lockData = lockDoc.data();
+          const lockTime = lockData.acquired_at?.toDate?.() || new Date(lockData.acquired_at);
+          const now = new Date();
+          const ageSeconds = (now - lockTime) / 1000;
+          
+          // Лок ещё активен
+          if (ageSeconds < ttlSeconds) {
+            throw new Error('Lock already acquired');
+          }
+        }
+        
+        // Создаём или обновляем лок
+        transaction.set(lockRef, {
+          acquired_at: FieldValue.serverTimestamp(),
+          ttl_seconds: ttlSeconds
+        });
+      });
+      
+      return true;
+    } catch (error) {
+      return false;
+    }
+  },
+
+  async releaseLock(lockName) {
+    try {
+      await db.collection('locks').doc(lockName).delete();
+    } catch (error) {
+      console.error(`[Lock] Error releasing lock ${lockName}:`, error.message);
+    }
   }
 };
 

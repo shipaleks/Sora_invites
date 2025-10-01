@@ -107,48 +107,49 @@ function startReminderScheduler(bot) {
   console.log('[Scheduler] Reminder scheduler initialized');
 }
 
-let isProcessingQueue = false; // Лок для предотвращения одновременной обработки
-
 function startQueueProcessor(bot) {
   // Проверка очереди каждые 5 минут
   cron.schedule('*/5 * * * *', async () => {
     console.log('[Scheduler] Processing queue...');
     
-    // Проверка лока
-    if (isProcessingQueue) {
-      console.log('[Scheduler] Already processing, skipping...');
-      return;
-    }
-    
     try {
-      isProcessingQueue = true;
+      // Получаем распределённый лок (защита от параллельных инстансов)
+      const acquired = await DB.acquireLock('queue_processor', 60);
       
-      const poolSize = await DB.getPoolSize();
-      if (poolSize === 0) {
-        console.log('[Scheduler] No codes available');
+      if (!acquired) {
+        console.log('[Scheduler] Lock held by another instance, skipping');
         return;
       }
       
-      const nextUser = await DB.getNextInQueue();
-      if (!nextUser) {
-        console.log('[Scheduler] Queue is empty');
-        return;
+      try {
+        const poolSize = await DB.getPoolSize();
+        if (poolSize === 0) {
+          console.log('[Scheduler] No codes available');
+          return;
+        }
+        
+        const nextUser = await DB.getNextInQueue();
+        if (!nextUser) {
+          console.log('[Scheduler] Queue is empty');
+          return;
+        }
+        
+        const availableCode = await DB.getAvailableCode();
+        if (!availableCode) {
+          console.log('[Scheduler] No available codes');
+          return;
+        }
+        
+        // Отправить инвайт
+        await processNextInvite(bot, nextUser.telegram_id, availableCode);
+        
+        console.log('[Scheduler] Queue processing completed');
+      } finally {
+        // Всегда освобождаем лок
+        await DB.releaseLock('queue_processor');
       }
-      
-      const availableCode = await DB.getAvailableCode();
-      if (!availableCode) {
-        console.log('[Scheduler] No available codes (race condition)');
-        return;
-      }
-      
-      // Отправить инвайт
-      await processNextInvite(bot, nextUser.telegram_id, availableCode);
-      
-      console.log('[Scheduler] Queue processing completed');
     } catch (error) {
       console.error('[Scheduler] Queue processing error:', error);
-    } finally {
-      isProcessingQueue = false;
     }
   });
   
