@@ -400,25 +400,34 @@ async function handleQueueSize(ctx, language) {
 }
 
 async function handleRequestHelp(ctx, bot) {
-  const allUsers = await DB.getAllUsers();
+  // Проверяем лок чтобы не отправлять повторно
+  const acquired = await DB.acquireLock('help_request', 300); // 5 минут
   
-  // Находим пользователей кто:
-  // 1. Получил инвайт (received или completed)
-  // 2. НЕ поделился всеми 4 использованиями
-  const targetUsers = allUsers.filter(u => 
-    (u.status === 'received' || u.status === 'completed') &&
-    (u.usage_count_shared || 0) < 4 &&
-    !u.is_banned
-  );
-  
-  if (targetUsers.length === 0) {
-    return ctx.reply('❌ Нет подходящих пользователей для запроса помощи');
+  if (!acquired) {
+    return ctx.reply('⚠️ Запрос помощи уже отправляется. Подожди 5 минут перед следующей рассылкой.');
   }
   
-  let successCount = 0;
-  let failCount = 0;
-  
-  await ctx.reply(`🚀 Запрос помощи для ${targetUsers.length} пользователей...`);
+  try {
+    const allUsers = await DB.getAllUsers();
+    
+    // Находим пользователей кто:
+    // 1. Получил инвайт (received или completed)
+    // 2. НЕ поделился всеми 4 использованиями
+    const targetUsers = allUsers.filter(u => 
+      (u.status === 'received' || u.status === 'completed') &&
+      (u.usage_count_shared || 0) < 4 &&
+      !u.is_banned
+    );
+    
+    if (targetUsers.length === 0) {
+      await DB.releaseLock('help_request');
+      return ctx.reply('❌ Нет подходящих пользователей для запроса помощи');
+    }
+    
+    let successCount = 0;
+    let failCount = 0;
+    
+    await ctx.reply(`🚀 Запрос помощи для ${targetUsers.length} пользователей...`);
   
   for (const user of targetUsers) {
     try {
@@ -458,6 +467,10 @@ Even 1 extra invite use will help someone get access to Sora!`
   }
   
   return ctx.reply(`✅ Запрос помощи отправлен!\nУспешно: ${successCount}\nОшибок: ${failCount}`);
+  } finally {
+    // Освобождаем лок через 30 секунд после завершения
+    setTimeout(() => DB.releaseLock('help_request'), 30000);
+  }
 }
 
 async function handleBroadcast(ctx, text, bot) {
