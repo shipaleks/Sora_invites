@@ -201,7 +201,8 @@ async function processNextInvite(bot, userId, codeObj) {
       status: 'received',
       invite_sent_at: new Date(),
       invite_code_given: codeObj.code,
-      reminder_count: 0
+      reminder_count: 0,
+      invites_received_count: (user.invites_received_count || 0) + 1
     });
     
     await DB.markCodeAsSent(codeObj.id, userId);

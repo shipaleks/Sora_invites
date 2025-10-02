@@ -38,7 +38,9 @@ export const DB = {
       codes_submitted: [],
       status: 'new',
       reminder_count: 0,
-      last_reminder: null
+      last_reminder: null,
+      invites_received_count: 0, // Счётчик полученных инвайтов (макс 2)
+      invalid_codes_reported: [] // Коды на которые пожаловался
     };
 
     await db.collection('users').doc(String(telegramId)).set(userData);

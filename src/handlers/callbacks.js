@@ -209,6 +209,205 @@ export function registerCallbacks(bot) {
     });
   });
 
+  // Пожаловаться на нерабочий инвайт
+  bot.action('report_invalid', async (ctx) => {
+    await ctx.answerCbQuery();
+    
+    const userId = ctx.from.id;
+    const user = await DB.getUser(userId);
+    
+    const MESSAGES = getMessages(user?.language || 'ru');
+    
+    if (!user || !user.invite_code_given) {
+      const msg = user?.language === 'en' 
+        ? '❌ You haven\'t received an invite yet' 
+        : '❌ Ты ещё не получил инвайт';
+      return ctx.reply(msg);
+    }
+    
+    const code = user.invite_code_given;
+    
+    // Проверяем не жаловался ли уже на этот код
+    if (user.invalid_codes_reported?.includes(code)) {
+      const msg = user?.language === 'en'
+        ? '⚠️ You already reported this code. We\'re working on it!'
+        : '⚠️ Ты уже жаловался на этот код. Мы работаем над этим!';
+      return ctx.reply(msg);
+    }
+    
+    await ctx.reply(MESSAGES.reportInvalidPrompt(code, user?.language || 'ru'), {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: MESSAGES.buttons.codeInvalid, callback_data: `confirm_invalid_${code}` }],
+          [{ text: MESSAGES.buttons.cancel, callback_data: 'cancel' }]
+        ]
+      }
+    });
+  });
+
+  // Подтверждение жалобы на нерабочий код
+  bot.action(/^confirm_invalid_(.+)$/, async (ctx) => {
+    await ctx.answerCbQuery();
+    
+    const userId = ctx.from.id;
+    const code = ctx.match[1];
+    const user = await DB.getUser(userId);
+    
+    const MESSAGES = getMessages(user?.language || 'ru');
+    
+    try {
+      // Отмечаем жалобу
+      await DB.updateUser(userId, {
+        invalid_codes_reported: [...(user.invalid_codes_reported || []), code]
+      });
+      
+      // Находим всех кто получил этот код
+      const allUsers = await DB.getAllUsers();
+      const affectedUsers = allUsers.filter(u => 
+        u.invite_code_given === code && 
+        u.telegram_id !== String(userId)
+      );
+      
+      // Если есть другие получатели - спрашиваем у них
+      if (affectedUsers.length > 0) {
+        for (const affectedUser of affectedUsers) {
+          try {
+            const msg = getMessages(affectedUser.language || 'ru');
+            await bot.telegram.sendMessage(
+              affectedUser.telegram_id,
+              msg.invalidCodeConfirm(code, affectedUser.language),
+              {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                  inline_keyboard: [
+                    [{ text: msg.buttons.codeWorks, callback_data: `code_works_${code}` }],
+                    [{ text: msg.buttons.codeInvalid, callback_data: `code_invalid_${code}` }]
+                  ]
+                }
+              }
+            );
+          } catch (error) {
+            console.error(`Failed to notify user ${affectedUser.telegram_id}:`, error.message);
+          }
+        }
+      }
+      
+      // Находим автора кода
+      const poolEntries = await db.collection('invite_pool')
+        .where('code', '==', code)
+        .get();
+      
+      if (!poolEntries.empty) {
+        const authorId = poolEntries.docs[0].data().submitted_by;
+        
+        // Не отправляем если автор - система/админ/donation
+        if (!authorId.includes('admin') && !authorId.includes('system') && !authorId.includes('donation') && !authorId.includes('unused')) {
+          try {
+            const author = await DB.getUser(authorId);
+            if (author) {
+              const authorMsg = getMessages(author.language || 'ru');
+              await bot.telegram.sendMessage(
+                author.telegram_id,
+                authorMsg.authorWarning(code, 1, author.language),
+                { parse_mode: 'Markdown' }
+              );
+            }
+          } catch (error) {
+            console.error(`Failed to notify author ${authorId}:`, error.message);
+          }
+        }
+      }
+      
+      // Даём пользователю новый инвайт если есть в пуле
+      const currentInvites = user.invites_received_count || 0;
+      
+      if (currentInvites >= 2) {
+        await ctx.editMessageText(MESSAGES.maxInvitesReached(user?.language || 'ru'), {
+          parse_mode: 'Markdown'
+        });
+        return;
+      }
+      
+      const msg = user?.language === 'en'
+        ? `✅ Report received. We're checking with other users and notifying the author.\n\nYou'll get a new invite soon!`
+        : `✅ Жалоба принята. Проверяем у других пользователей и уведомляем автора.\n\nСкоро получишь новый инвайт!`;
+      
+      await ctx.editMessageText(msg);
+      
+      // Добавляем обратно в очередь с высоким приоритетом
+      await DB.addToQueue(userId);
+      
+      // Уведомление админу
+      try {
+        await bot.telegram.sendMessage(
+          config.telegram.adminId,
+          `🚫 Жалоба на код от @${user.username}\nКод: ${code}\nДругих получателей: ${affectedUsers.length}`
+        );
+      } catch (error) {
+        console.error('Admin notification failed:', error.message);
+      }
+      
+    } catch (error) {
+      console.error('Error processing invalid code report:', error);
+      await ctx.reply('❌ Ошибка. Попробуй позже.');
+    }
+  });
+
+  // Ответ: код работает
+  bot.action(/^code_works_(.+)$/, async (ctx) => {
+    await ctx.answerCbQuery('Спасибо за подтверждение!');
+    
+    const code = ctx.match[1];
+    
+    const msg = ctx.from.language_code === 'ru'
+      ? `✅ Отлично! Значит код работает.\n\nВозможно у жалующегося была другая проблема.`
+      : `✅ Great! So the code works.\n\nMaybe the reporter had a different issue.`;
+    
+    await ctx.editMessageText(msg);
+  });
+
+  // Ответ: код НЕ работает
+  bot.action(/^code_invalid_(.+)$/, async (ctx) => {
+    await ctx.answerCbQuery();
+    
+    const userId = ctx.from.id;
+    const code = ctx.match[1];
+    const user = await DB.getUser(userId);
+    
+    const MESSAGES = getMessages(user?.language || 'ru');
+    
+    try {
+      // Отмечаем жалобу
+      await DB.updateUser(userId, {
+        invalid_codes_reported: [...(user.invalid_codes_reported || []), code]
+      });
+      
+      // Проверяем лимит инвайтов
+      const currentInvites = user.invites_received_count || 0;
+      
+      if (currentInvites >= 2) {
+        await ctx.editMessageText(MESSAGES.maxInvitesReached(user?.language || 'ru'), {
+          parse_mode: 'Markdown'
+        });
+        return;
+      }
+      
+      // Добавляем обратно в очередь
+      await DB.addToQueue(userId);
+      
+      const msg = user?.language === 'en'
+        ? `✅ Confirmed. You'll get a new invite soon!`
+        : `✅ Подтверждено. Скоро получишь новый инвайт!`;
+      
+      await ctx.editMessageText(msg);
+      
+    } catch (error) {
+      console.error('Error confirming invalid code:', error);
+      await ctx.reply('❌ Ошибка.');
+    }
+  });
+
   // Выбор количества использований (обычный возврат)
   bot.action(/^usage_([1-4])$/, async (ctx) => {
     await ctx.answerCbQuery();

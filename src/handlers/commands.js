@@ -29,7 +29,7 @@ export function registerCommands(bot) {
     
     const MESSAGES = getMessages(user.language);
     
-    // Если пользователь уже получил инвайт, показываем кнопку для возврата кодов
+    // Если пользователь уже получил инвайт, показываем дополнительные кнопки
     if (user.status === 'received') {
       await ctx.reply(MESSAGES.welcome, {
         reply_markup: {
@@ -37,6 +37,7 @@ export function registerCommands(bot) {
             [{ text: MESSAGES.buttons.wantInvite, callback_data: 'want_invite' }],
             [{ text: MESSAGES.buttons.submitCodes, callback_data: 'submit_codes' }],
             [{ text: MESSAGES.buttons.returnUnused, callback_data: 'return_unused' }],
+            [{ text: MESSAGES.buttons.reportInvalid, callback_data: 'report_invalid' }],
             [{ text: MESSAGES.buttons.donateCodes, callback_data: 'donate_codes' }]
           ]
         },

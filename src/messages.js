@@ -41,11 +41,13 @@ const MESSAGES = {
 → Веб: правый угол ⋮ → Invite Friends
 → Приложение: "4 invites" → Share
 
-📨 Вернёшься и отправишь код → выберешь сколькими использованиями поделиться (я рекомендую 2).
+📨 Вернёшься и отправишь код → выберешь сколькими использованиями поделиться.
+
+💡 **Рекомендую 3** (тебе останется 1 для близкого друга). Коды иногда получаются недействительными, поэтому чем больше поделишься - тем лучше для системы!
 
 ⏰ Дедлайн: 48 часов
 
-💝 Подпишись: ${config.telegram.channel}`,
+💝 Подпишись (про AI): ${config.telegram.channel}`,
 
     waitingForCodes: (codesRequired, codesReturned) => {
       if (codesReturned > 0) {
@@ -184,12 +186,15 @@ ${poolSize > queueSize
       submitCodes: '📨 Отправить коды',
       donateCodes: '💝 Пожертвовать коды',
       returnUnused: '↩️ Вернуть неиспользованный инвайт',
+      reportInvalid: '🚫 Нерабочий инвайт',
       russian: '🇷🇺 Русский',
       english: '🇬🇧 English',
       usage1: '1 человек (оставлю 3 себе)',
       usage2: '2 человека (оставлю 2 себе)',
       usage3: '3 человека (оставлю 1 себе)',
-      usage4: '4 человека (отдам всё)'
+      usage4: '4 человека (отдам всё)',
+      codeWorks: '✅ Код работает',
+      codeInvalid: '❌ Код не работает'
     },
 
     donateCodesPrompt: (language) => language === 'en' 
@@ -223,6 +228,102 @@ Thanks to you, someone will get access to Sora! 🎉`
 ${count} ${pluralizeRu(count, 'код', 'кода', 'кодов')} успешно ${count === 1 ? 'добавлен' : 'добавлены'} в пул!
 
 Благодаря тебе кто-то получит доступ к Sora! 🎉`,
+
+    reportInvalidPrompt: (code, language) => language === 'en'
+      ? `🚫 **Report Invalid Invite**
+
+Code: \`${code}\`
+
+Are you sure this code doesn't work?
+
+We'll check with other users who received this code and notify the author.
+
+You'll be able to request a new invite (max 2 invites total).`
+      : `🚫 **Пожаловаться на нерабочий инвайт**
+
+Код: \`${code}\`
+
+Ты уверен что этот код не работает?
+
+Мы проверим у других кто получил этот код и уведомим автора.
+
+Ты сможешь запросить новый инвайт (макс 2 инвайта всего).`,
+
+    invalidCodeConfirm: (code, language) => language === 'en'
+      ? `⚠️ **Code reported as invalid**
+
+Code: \`${code}\`
+
+Can you confirm - does this code work for you?
+
+If it doesn't work, we'll send you a new invite.`
+      : `⚠️ **Код помечен как недействительный**
+
+Код: \`${code}\`
+
+Можешь подтвердить - этот код у тебя работает?
+
+Если не работает, мы отправим тебе новый инвайт.`,
+
+    authorWarning: (code, reportCount, language) => language === 'en'
+      ? `⚠️ **Code Issue Reported**
+
+Your code: \`${code}\`
+
+${reportCount} user${reportCount > 1 ? 's' : ''} reported this code doesn't work.
+
+**Please verify:**
+• Did you send a valid code?
+• Did you copy it correctly from Sora?
+
+You can donate a working code anytime.
+
+The show must go on - please don't let the community down! 🙏`
+      : `⚠️ **Жалоба на твой код**
+
+Твой код: \`${code}\`
+
+${reportCount} ${reportCount === 1 ? 'человек сообщил' : 'человека сообщили'} что код не работает.
+
+**Пожалуйста проверь:**
+• Ты отправил действующий код?
+• Правильно скопировал из Sora?
+
+Можешь пожертвовать рабочий код в любой момент.
+
+Шоу маст гоу он - не подводи комьюнити! 🙏`,
+
+    newInviteGranted: (newCode, attemptNumber, language) => language === 'en'
+      ? `✅ **New invite sent** (attempt #${attemptNumber})
+
+Code: \`${newCode}\`
+
+Previous code was confirmed as invalid.
+
+Hope this one works! 🤞`
+      : `✅ **Новый инвайт отправлен** (попытка #${attemptNumber})
+
+Код: \`${newCode}\`
+
+Предыдущий код подтверждён как недействительный.
+
+Надеюсь этот сработает! 🤞`,
+
+    maxInvitesReached: (language) => language === 'en'
+      ? `❌ **Max invites reached**
+
+You've already received 2 invites.
+
+This is the maximum to prevent abuse.
+
+Sorry! 🙏`
+      : `❌ **Достигнут лимит инвайтов**
+
+Ты уже получил 2 инвайта.
+
+Это максимум для предотвращения злоупотреблений.
+
+Извини! 🙏`,
 
     returnUnusedPrompt: (language) => language === 'en'
       ? `↩️ **Return Unused Invite**
@@ -326,7 +427,9 @@ Agree?`,
 → Web: corner ⋮ → Invite Friends
 → App: "4 invites" → Share
 
-📨 Come back, send code → choose how many uses to share (I recommend 2).
+📨 Come back, send code → choose how many uses to share.
+
+💡 **I recommend 3** (you keep 1 for a close friend). Codes sometimes turn out invalid, so the more you share - the better for the system!
 
 ⏰ Deadline: 48h
 
@@ -461,12 +564,15 @@ Head of Research at Yandex Search & AI`,
       submitCodes: '📨 Submit Codes',
       donateCodes: '💝 Donate Codes',
       returnUnused: '↩️ Return Unused Invite',
+      reportInvalid: '🚫 Invalid Invite',
       russian: '🇷🇺 Русский',
       english: '🇬🇧 English',
       usage1: '1 person (keep 3 for me)',
       usage2: '2 people (keep 2 for me)',
       usage3: '3 people (keep 1 for me)',
-      usage4: '4 people (give all)'
+      usage4: '4 people (give all)',
+      codeWorks: '✅ Code works',
+      codeInvalid: '❌ Code invalid'
     },
 
     chooseUsageCount: (code) => `✅ Code: \`${code}\`
