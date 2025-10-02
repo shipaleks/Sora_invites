@@ -21,7 +21,7 @@ export default {
     regularCodesRequired: 1,      // Все возвращают код 1 раз
     maxCodeUsage: 2,              // Код можем отдать максимум 2 людям (из 4 использований)
     deadlineHours: 48,            // Дедлайн для возврата
-    reminderIntervals: [12, 24, 40] // Напоминания (12ч, 24ч, 40ч)
+    reminderIntervals: [6, 12, 18, 24, 36, 42] // Напоминания (6ч, 12ч, 18ч, 24ч, 36ч, 42ч)
   },
   
   app: {

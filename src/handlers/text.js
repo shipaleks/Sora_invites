@@ -49,6 +49,9 @@ export function registerTextHandlers(bot) {
         if (text.startsWith('/broadcast ')) {
           return handleBroadcast(ctx, text, bot);
         }
+        if (text === '/requesthelp') {
+          return handleRequestHelp(ctx, bot);
+        }
       }
       return; // Остальные команды обрабатываются в commands.js
     }
@@ -394,6 +397,72 @@ async function handlePoolSize(ctx, language) {
 async function handleQueueSize(ctx, language) {
   const size = await DB.getQueueSize();
   return ctx.reply(`👥 В очереди: **${size}**`, { parse_mode: 'Markdown' });
+}
+
+async function handleRequestHelp(ctx, bot) {
+  const allUsers = await DB.getAllUsers();
+  
+  // Находим пользователей кто:
+  // 1. Получил инвайт (received или completed)
+  // 2. НЕ поделился всеми 4 использованиями
+  const targetUsers = allUsers.filter(u => 
+    (u.status === 'received' || u.status === 'completed') &&
+    (u.usage_count_shared || 0) < 4 &&
+    !u.is_banned
+  );
+  
+  if (targetUsers.length === 0) {
+    return ctx.reply('❌ Нет подходящих пользователей для запроса помощи');
+  }
+  
+  let successCount = 0;
+  let failCount = 0;
+  
+  await ctx.reply(`🚀 Запрос помощи для ${targetUsers.length} пользователей...`);
+  
+  for (const user of targetUsers) {
+    try {
+      const MESSAGES = getMessages(user.language || 'ru');
+      const sharedUses = user.usage_count_shared || 0;
+      const remaining = 4 - sharedUses;
+      
+      const helpMessage = user.language === 'en'
+        ? `🆘 **We need your help!**
+
+The invite pool is completely empty, but there are many people waiting in queue.
+
+You shared **${sharedUses}** use${sharedUses > 1 ? 's' : ''}, you have **${remaining}** remaining.
+
+**Please consider donating more uses!**
+
+Even 1-2 more uses will help someone get access to Sora.
+
+/start → "💝 Donate Codes"`
+        : `🆘 **Нужна твоя помощь!**
+
+Пул инвайтов полностью опустел, а в очереди много людей ждут.
+
+Ты поделился **${sharedUses}** ${sharedUses === 1 ? 'использованием' : 'использованиями'}, у тебя осталось **${remaining}**.
+
+**Пожалуйста, рассмотри возможность пожертвовать ещё!**
+
+Даже 1-2 дополнительных использования помогут кому-то получить доступ к Sora.
+
+/start → "💝 Пожертвовать коды"`;
+      
+      await bot.telegram.sendMessage(user.telegram_id, helpMessage, { 
+        parse_mode: 'Markdown' 
+      });
+      successCount++;
+      
+      await new Promise(resolve => setTimeout(resolve, 100));
+    } catch (error) {
+      failCount++;
+      console.error(`Help request failed for ${user.telegram_id}:`, error.message);
+    }
+  }
+  
+  return ctx.reply(`✅ Запрос помощи отправлен!\nУспешно: ${successCount}\nОшибок: ${failCount}`);
 }
 
 async function handleBroadcast(ctx, text, bot) {

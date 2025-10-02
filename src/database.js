@@ -173,21 +173,29 @@ export const DB = {
   },
 
   async addCodesToPoolWithLimit(code, submittedBy, usageLimit) {
-    // Проверяем сколько раз этот код уже в пуле
+    // Проверяем сколько раз этот код уже в пуле (ТОЛЬКО available, не считаем sent)
     const existing = await db.collection('invite_pool')
+      .where('code', '==', code)
+      .where('status', '==', 'available')
+      .get();
+    
+    const currentAvailable = existing.size;
+    
+    // Проверяем сколько ВСЕГО был использован (available + sent)
+    const allUsages = await db.collection('invite_pool')
       .where('code', '==', code)
       .get();
     
-    const currentUsage = existing.size;
+    const totalUsage = allUsages.size;
     
     // Максимум 4 использования на код
-    if (currentUsage >= 4) {
-      console.log(`[Pool] Code ${code} already used ${currentUsage} times`);
+    if (totalUsage >= 4) {
+      console.log(`[Pool] Code ${code} already used ${totalUsage} times`);
       return 0;
     }
     
     // Сколько использований можем добавить
-    const availableSlots = Math.min(usageLimit, 4 - currentUsage);
+    const availableSlots = Math.min(usageLimit, 4 - totalUsage);
     
     if (availableSlots === 0) {
       return 0;
