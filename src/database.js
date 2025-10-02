@@ -40,7 +40,9 @@ export const DB = {
       reminder_count: 0,
       last_reminder: null,
       invites_received_count: 0, // Счётчик полученных инвайтов (макс 2)
-      invalid_codes_reported: [] // Коды на которые пожаловался
+      invalid_codes_reported: [], // Коды на которые пожаловался
+      is_banned: false, // Забанен за недобросовестное поведение
+      ban_reason: null // Причина бана
     };
 
     await db.collection('users').doc(String(telegramId)).set(userData);
@@ -412,6 +414,37 @@ export const DB = {
     } catch (error) {
       console.error(`[Lock] Error releasing lock ${lockName}:`, error.message);
     }
+  },
+
+  // === BAN SYSTEM ===
+  async banUser(telegramId, reason) {
+    await this.updateUser(telegramId, {
+      is_banned: true,
+      ban_reason: reason,
+      banned_at: FieldValue.serverTimestamp()
+    });
+  },
+
+  async unbanUser(telegramId) {
+    await this.updateUser(telegramId, {
+      is_banned: false,
+      ban_reason: null
+    });
+  },
+
+  async getUserByUsername(username) {
+    const cleanUsername = username.replace('@', '');
+    const snapshot = await db.collection('users')
+      .where('username', '==', cleanUsername)
+      .limit(1)
+      .get();
+    
+    if (snapshot.empty) {
+      return null;
+    }
+    
+    const doc = snapshot.docs[0];
+    return { id: doc.id, ...doc.data() };
   }
 };
 

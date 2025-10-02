@@ -34,6 +34,12 @@ export function registerTextHandlers(bot) {
         if (text.startsWith('/finduser ')) {
           return handleFindUser(ctx, text);
         }
+        if (text.startsWith('/ban ')) {
+          return handleBan(ctx, text);
+        }
+        if (text.startsWith('/unban ')) {
+          return handleUnban(ctx, text);
+        }
         if (text === '/poolsize') {
           return handlePoolSize(ctx, user?.language || 'ru');
         }
@@ -75,6 +81,29 @@ async function handleCodeSubmission(ctx, user) {
   const codes = extractCodes(text);
   
   const MESSAGES = getMessages(user.language || 'ru');
+  
+  // Проверка на бан
+  if (user.is_banned) {
+    return ctx.reply(
+      `🚫 Ты заблокирован за отправку недействительных кодов.\n\nПричина: ${user.ban_reason || 'Нарушение правил'}`,
+      { parse_mode: 'Markdown' }
+    );
+  }
+  
+  // Проверка: были ли жалобы на коды этого пользователя
+  const allUsers = await DB.getAllUsers();
+  const complaintsOnUserCodes = allUsers.filter(u => 
+    u.invalid_codes_reported?.some(reportedCode => 
+      user.codes_submitted?.includes(reportedCode)
+    )
+  ).length;
+  
+  if (complaintsOnUserCodes >= 2) {
+    return ctx.reply(
+      `🚫 На твои предыдущие коды поступили жалобы.\n\nОтправка новых кодов временно заблокирована.\n\nПожалуйста отправляй только действующие коды!`,
+      { parse_mode: 'Markdown' }
+    );
+  }
   
   if (codes.length === 0) {
     return ctx.reply('❌ Не найден код. Отправь свой код из Sora (6 символов).', { 
@@ -276,6 +305,47 @@ async function handleResetAll(ctx, language) {
   await ctx.reply('⚠️ Это удалит ВСЕ данные. Уверен? Отправь /confirmedreset');
 }
 
+async function handleBan(ctx, text) {
+  const params = text.replace('/ban ', '').trim();
+  const parts = params.split(' ');
+  const username = parts[0];
+  const reason = parts.slice(1).join(' ') || 'Нарушение правил';
+  
+  if (!username) {
+    return ctx.reply('❌ Формат: /ban @username причина\nПример: /ban @user123 Фейковые коды');
+  }
+  
+  const user = await DB.getUserByUsername(username);
+  
+  if (!user) {
+    return ctx.reply(`❌ Пользователь ${username} не найден`);
+  }
+  
+  await DB.banUser(user.telegram_id, reason);
+  
+  return ctx.reply(`✅ Забанен: @${user.username}\nПричина: ${reason}`, { 
+    parse_mode: 'Markdown' 
+  });
+}
+
+async function handleUnban(ctx, text) {
+  const username = text.replace('/unban ', '').trim();
+  
+  if (!username) {
+    return ctx.reply('❌ Формат: /unban @username');
+  }
+  
+  const user = await DB.getUserByUsername(username);
+  
+  if (!user) {
+    return ctx.reply(`❌ Пользователь ${username} не найден`);
+  }
+  
+  await DB.unbanUser(user.telegram_id);
+  
+  return ctx.reply(`✅ Разбанен: @${user.username}`);
+}
+
 async function handleFindUser(ctx, text) {
   const userId = text.replace('/finduser ', '').trim();
   
@@ -297,9 +367,11 @@ ID: \`${user.telegram_id}\`
 Username: @${user.username}
 Статус: ${user.status}
 Очередь: ${queuePos || '-'}
+${user.is_banned ? `\n🚫 ЗАБАНЕН: ${user.ban_reason}` : ''}
 
 Получил код: ${user.invite_code_given || '-'}
-Вернул: ${user.codes_returned}`;
+Вернул: ${user.codes_returned}
+Инвайтов получено: ${user.invites_received_count || 0}`;
 
   return ctx.reply(info, { parse_mode: 'Markdown' });
 }
