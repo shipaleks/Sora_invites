@@ -12,8 +12,8 @@ export function startSchedulers(bot) {
 }
 
 function startReminderScheduler(bot) {
-  // Проверка каждые 6 часов (было: каждый час - слишком часто для квоты)
-  cron.schedule('0 */6 * * *', async () => {
+  // Проверка каждый час (для точных напоминаний)
+  cron.schedule('0 * * * *', async () => {
     console.log('[Scheduler] Checking reminders...');
     
     try {
