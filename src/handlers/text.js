@@ -12,48 +12,50 @@ export function registerTextHandlers(bot) {
     const user = await DB.getUser(userId);
     const MESSAGES = getMessages(user?.language || 'ru');
     
-    // Игнорируем команды (они обрабатываются отдельно)
-    if (text.startsWith('/')) {
-      // Админ команды
-      if (userId === config.telegram.adminId) {
-        if (text.startsWith('/addcodes ')) {
-          return handleAdminAddCodes(ctx, text, user?.language || 'ru');
-        }
-        if (text.startsWith('/removecode ')) {
-          return handleAdminRemoveCode(ctx, text, user?.language || 'ru');
-        }
-        if (text === '/clearpool') {
-          return handleClearPool(ctx, user?.language || 'ru');
-        }
-        if (text === '/clearqueue') {
-          return handleClearQueue(ctx, user?.language || 'ru');
-        }
-        if (text === '/resetall') {
-          return handleResetAll(ctx, user?.language || 'ru');
-        }
-        if (text.startsWith('/finduser ')) {
-          return handleFindUser(ctx, text);
-        }
-        if (text.startsWith('/ban ')) {
-          return handleBan(ctx, text);
-        }
-        if (text.startsWith('/unban ')) {
-          return handleUnban(ctx, text);
-        }
-        if (text === '/poolsize') {
-          return handlePoolSize(ctx, user?.language || 'ru');
-        }
-        if (text === '/queuesize') {
-          return handleQueueSize(ctx, user?.language || 'ru');
-        }
-        if (text.startsWith('/broadcast ')) {
-          return handleBroadcast(ctx, text, bot);
-        }
-        if (text === '/requesthelp') {
-          return handleRequestHelp(ctx, bot);
-        }
+    // Админ команды (только для админа)
+    if (text.startsWith('/') && userId === config.telegram.adminId) {
+      if (text.startsWith('/addcodes ')) {
+        return handleAdminAddCodes(ctx, text, user?.language || 'ru');
       }
-      return; // Остальные команды обрабатываются в commands.js
+      if (text.startsWith('/removecode ')) {
+        return handleAdminRemoveCode(ctx, text, user?.language || 'ru');
+      }
+      if (text === '/clearpool') {
+        return handleClearPool(ctx, user?.language || 'ru');
+      }
+      if (text === '/clearqueue') {
+        return handleClearQueue(ctx, user?.language || 'ru');
+      }
+      if (text === '/resetall') {
+        return handleResetAll(ctx, user?.language || 'ru');
+      }
+      if (text.startsWith('/finduser ')) {
+        return handleFindUser(ctx, text);
+      }
+      if (text.startsWith('/ban ')) {
+        return handleBan(ctx, text);
+      }
+      if (text.startsWith('/unban ')) {
+        return handleUnban(ctx, text);
+      }
+      if (text === '/poolsize') {
+        return handlePoolSize(ctx, user?.language || 'ru');
+      }
+      if (text === '/queuesize') {
+        return handleQueueSize(ctx, user?.language || 'ru');
+      }
+      if (text.startsWith('/broadcast ')) {
+        return handleBroadcast(ctx, text, bot);
+      }
+      if (text === '/requesthelp') {
+        return handleRequestHelp(ctx, bot);
+      }
+      // Остальные команды админа (start, stats, help, language) - пропускаем в commands.js
+    }
+    
+    // Если это команда - пропускаем (обрабатывается в commands.js)
+    if (text.startsWith('/')) {
+      return;
     }
     
     if (!user) {
