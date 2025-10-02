@@ -411,6 +411,28 @@ export function registerCallbacks(bot) {
     }
   });
 
+  // Рохан явится на помощь Гондору!
+  bot.action('rohan_answers', async (ctx) => {
+    await ctx.answerCbQuery('⚔️ За Рохан!');
+    
+    const userId = ctx.from.id;
+    const user = await DB.getUser(userId);
+    
+    const MESSAGES = getMessages(user?.language || 'ru');
+    
+    // Переходим к донейту
+    await ctx.editMessageText(MESSAGES.donateCodesPrompt(user?.language || 'ru'), {
+      parse_mode: 'Markdown'
+    });
+    
+    await DB.updateUser(userId, {
+      awaiting_donation: true,
+      awaiting_donation_usage: false,
+      awaiting_codes: false,
+      awaiting_unused_return: false
+    });
+  });
+
   // Выбор количества использований (обычный возврат)
   bot.action(/^usage_([1-4])$/, async (ctx) => {
     await ctx.answerCbQuery();

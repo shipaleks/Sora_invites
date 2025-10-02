@@ -423,35 +423,30 @@ async function handleRequestHelp(ctx, bot) {
   for (const user of targetUsers) {
     try {
       const MESSAGES = getMessages(user.language || 'ru');
-      const sharedUses = user.usage_count_shared || 0;
-      const remaining = 4 - sharedUses;
       
       const helpMessage = user.language === 'en'
-        ? `🆘 **We need your help!**
+        ? `🔥 **GONDOR CALLS FOR AID!**
 
-The invite pool is completely empty, but there are many people waiting in queue.
+The invite pool is empty. People are waiting in queue.
 
-You shared **${sharedUses}** use${sharedUses > 1 ? 's' : ''}, you have **${remaining}** remaining.
+**Will you answer the call?**
 
-**Please consider donating more uses!**
+Even 1 extra invite use will help someone get access to Sora!`
+        : `🔥 **ГОНДОР ЗОВЁТ НА ПОМОЩЬ!**
 
-Even 1-2 more uses will help someone get access to Sora.
+Пул инвайтов опустел. Люди ждут в очереди.
 
-/start → "💝 Donate Codes"`
-        : `🆘 **Нужна твоя помощь!**
+**Поможешь ли ты?**
 
-Пул инвайтов полностью опустел, а в очереди много людей ждут.
-
-Ты поделился **${sharedUses}** ${sharedUses === 1 ? 'использованием' : 'использованиями'}, у тебя осталось **${remaining}**.
-
-**Пожалуйста, рассмотри возможность пожертвовать ещё!**
-
-Даже 1-2 дополнительных использования помогут кому-то получить доступ к Sora.
-
-/start → "💝 Пожертвовать коды"`;
+Даже 1 дополнительное использование инвайта поможет кому-то получить доступ!`;
       
-      await bot.telegram.sendMessage(user.telegram_id, helpMessage, { 
-        parse_mode: 'Markdown' 
+      await bot.telegram.sendMessage(user.telegram_id, helpMessage, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [[
+            { text: MESSAGES.buttons.rohanAnswers, callback_data: 'rohan_answers' }
+          ]]
+        }
       });
       successCount++;
       

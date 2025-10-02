@@ -203,7 +203,8 @@ ${poolSize > queueSize
       usage3: '3 человека (оставлю 1 себе)',
       usage4: '4 человека (отдам всё)',
       codeWorks: '✅ Код работает',
-      codeInvalid: '❌ Код не работает'
+      codeInvalid: '❌ Код не работает',
+      rohanAnswers: '⚔️ И РОХАН ЯВИТСЯ!'
     },
 
     donateCodesPrompt: (language) => language === 'en' 
@@ -597,7 +598,8 @@ Head of Research at Yandex Search & AI`,
       usage3: '3 people (keep 1 for me)',
       usage4: '4 people (give all)',
       codeWorks: '✅ Code works',
-      codeInvalid: '❌ Code invalid'
+      codeInvalid: '❌ Code invalid',
+      rohanAnswers: '⚔️ AND ROHAN WILL ANSWER!'
     },
 
     chooseUsageCount: (code) => `✅ Code: \`${code}\`
