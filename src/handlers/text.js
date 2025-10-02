@@ -323,7 +323,10 @@ async function handleBan(ctx, text) {
   
   await DB.banUser(user.telegram_id, reason);
   
-  return ctx.reply(`✅ Забанен: @${user.username}\nПричина: ${reason}`, { 
+  // Экранируем спецсимволы Markdown в username
+  const safeUsername = user.username.replace(/_/g, '\\_');
+  
+  return ctx.reply(`✅ Забанен: @${safeUsername}\nПричина: ${reason}`, { 
     parse_mode: 'Markdown' 
   });
 }
@@ -343,7 +346,11 @@ async function handleUnban(ctx, text) {
   
   await DB.unbanUser(user.telegram_id);
   
-  return ctx.reply(`✅ Разбанен: @${user.username}`);
+  const safeUsername = user.username.replace(/_/g, '\\_');
+  
+  return ctx.reply(`✅ Разбанен: @${safeUsername}`, {
+    parse_mode: 'Markdown'
+  });
 }
 
 async function handleFindUser(ctx, text) {
@@ -361,10 +368,13 @@ async function handleFindUser(ctx, text) {
   
   const queuePos = await DB.getQueuePosition(userId);
   
+  // Экранируем спецсимволы в username
+  const safeUsername = user.username.replace(/_/g, '\\_');
+  
   const info = `👤 Пользователь
 
 ID: \`${user.telegram_id}\`
-Username: @${user.username}
+Username: @${safeUsername}
 Статус: ${user.status}
 Очередь: ${queuePos || '-'}
 ${user.is_banned ? `\n🚫 ЗАБАНЕН: ${user.ban_reason}` : ''}
