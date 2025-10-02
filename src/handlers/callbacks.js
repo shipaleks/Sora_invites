@@ -1,6 +1,9 @@
 import DB from '../database.js';
 import { getMessages } from '../messages.js';
 import config from '../config.js';
+import admin from 'firebase-admin';
+
+const db = admin.firestore();
 
 export function registerCallbacks(bot) {
   // Выбор языка
