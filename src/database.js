@@ -211,7 +211,7 @@ export const DB = {
         submitted_by: String(submittedBy),
         status: 'available',
         sent_to: null,
-        usage_number: currentUsage + i + 1, // Какое по счёту использование
+        usage_number: totalUsage + i + 1, // Какое по счёту использование
         total_limit: usageLimit, // Сколько всего пользователь поделился
         created_at: FieldValue.serverTimestamp()
       });

@@ -420,8 +420,28 @@ export function registerCallbacks(bot) {
     
     const MESSAGES = getMessages(user?.language || 'ru');
     
-    // Переходим к донейту
-    await ctx.editMessageText(MESSAGES.donateCodesPrompt(user?.language || 'ru'), {
+    // Отправляем новое сообщение вместо редактирования (чтобы избежать "message not modified")
+    const promptText = user?.language === 'en'
+      ? `💝 **Donate Code**
+
+**Where to find code:**
+→ Web: ⋮ → Invite Friends
+→ App: "4 invites" → Share
+
+Send code → choose how many uses to share.
+
+Thanks! 🙏`
+      : `💝 **Пожертвовать код**
+
+**Где взять код:**
+→ Веб: ⋮ → Invite Friends
+→ Приложение: "4 invites" → Share
+
+Отправь код → выберешь сколько использований поделиться.
+
+Спасибо! 🙏`;
+    
+    await ctx.reply(promptText, {
       parse_mode: 'Markdown'
     });
     
