@@ -108,8 +108,8 @@ function startReminderScheduler(bot) {
 }
 
 function startQueueProcessor(bot) {
-  // Проверка очереди каждые 5 минут (оптимизация квоты Firebase)
-  cron.schedule('*/5 * * * *', async () => {
+  // Проверка очереди каждую минуту
+  cron.schedule('* * * * *', async () => {
     console.log('[Scheduler] Processing queue...');
     
     try {
