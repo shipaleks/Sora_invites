@@ -438,7 +438,11 @@ Agree?`,
 
 📨 Come back, send code → choose how many uses to share.
 
-💡 **I recommend 3** (you keep 1 for a close friend). Codes sometimes turn out invalid, so the more you share - the better for the system!
+💡 **PLEASE share 3-4 uses!**
+
+The system only works if people return codes. Right now the queue is huge but we have almost no codes.
+
+Your contribution is critical! 🙏
 
 ⏰ Deadline: 48h
 
@@ -475,25 +479,37 @@ You've returned ${totalCodes} code${totalCodes > 1 ? 's' : ''}.
 
 Good luck creating videos! 🎬`,
 
-    reminder: (hoursLeft, codesRequired) => `⏰ **Friendly Reminder**
+    reminder: (hoursLeft, codesRequired, codesReturned) => {
+      if (codesReturned > 0) {
+        return null;
+      }
+      
+      return `⏰ REMINDER
 
-You received your Sora invite ${48 - hoursLeft} hours ago.
+🙏 Please return your code from Sora!
 
-Don't forget to return **${codesRequired} code${codesRequired > 1 ? 's' : ''}** to the bot — other participants are waiting too!
+Queue is growing, people need your help.
 
-⏱️ Time remaining: **~${hoursLeft} hours**
+/start → "Submit Codes"
 
-📨 To send codes, click /start and select "Submit Codes"`,
+⏱️ Time left: ~${hoursLeft}h`;
+    },
 
-    finalWarning: (codesRequired) => `⚠️ **Final Reminder**
+    finalWarning: (codesRequired, codesReturned) => {
+      if (codesReturned > 0) {
+        return null;
+      }
+      
+      return `🚨 URGENT! Final reminder
 
-You have ~1 hour left to return **${codesRequired} code${codesRequired > 1 ? 's' : ''}**.
+System critically needs codes!
 
-It's not mandatory, but other queue participants are hoping for your help 🙏
+Please return your code from Sora - takes 30 seconds.
 
-The system works on trust — let's support each other!
+Without your help the system can't work! 🙏
 
-📨 Send codes: /start → "Submit Codes"`,
+/start → "Submit Codes"`;
+    },
 
     addedToQueue: (position, poolSize) => `✅ **You've been added to the queue!**
 
@@ -586,9 +602,11 @@ Head of Research at Yandex Search & AI`,
 
     chooseUsageCount: (code) => `✅ Code: \`${code}\`
 
-**How many people to invite through bot?**
+**How many people to invite?**
 
-Code works 4 times. Rest stays with you.
+🙏 System needs help! Queue is big, codes are low.
+
+Please consider **3-4 uses** - it will REALLY help!
 
 Choose:`
   }
