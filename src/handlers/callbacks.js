@@ -230,18 +230,40 @@ export function registerCallbacks(bot) {
     
     const code = user.invite_code_given;
     
-    // Проверяем: не жаловался ли уже на этот код
-    if (user.invalid_codes_reported?.includes(code)) {
-      // Уже жаловался - просто добавляем в очередь снова
-      const currentInvites = user.invites_received_count || 0;
+    // ЗАЩИТА 1: Лимит на количество инвайтов (максимум 2)
+    const currentInvites = user.invites_received_count || 0;
+    if (currentInvites >= 2) {
+      const msg = user?.language === 'en'
+        ? '❌ Max invites reached (2). You cannot request more.'
+        : '❌ Достигнут лимит инвайтов (2). Больше запросить нельзя.';
+      return ctx.reply(msg);
+    }
+    
+    // ЗАЩИТА 2: Лимит на количество жалоб (максимум 3)
+    const totalReports = user.invalid_codes_reported?.length || 0;
+    if (totalReports >= 3) {
+      const msg = user?.language === 'en'
+        ? '⚠️ You\'ve reported 3 codes already. This seems suspicious.\n\nPlease contact admin if you really have issues.'
+        : '⚠️ Ты уже пожаловался на 3 кода. Это выглядит подозрительно.\n\nСвяжись с админом если действительно есть проблемы.';
+      return ctx.reply(msg);
+    }
+    
+    // ЗАЩИТА 3: Cooldown - последняя жалоба должна быть не раньше чем 10 минут назад
+    if (user.last_report_time) {
+      const lastReport = user.last_report_time.toDate ? user.last_report_time.toDate() : new Date(user.last_report_time);
+      const minutesSinceLastReport = (new Date() - lastReport) / (1000 * 60);
       
-      if (currentInvites >= 2) {
+      if (minutesSinceLastReport < 10) {
         const msg = user?.language === 'en'
-          ? '❌ Max invites reached (2). Sorry!'
-          : '❌ Достигнут лимит инвайтов (2). Извини!';
+          ? `⚠️ Please wait ${Math.ceil(10 - minutesSinceLastReport)} more minutes before reporting again.`
+          : `⚠️ Подожди ещё ${Math.ceil(10 - minutesSinceLastReport)} минут перед следующей жалобой.`;
         return ctx.reply(msg);
       }
-      
+    }
+    
+    // Проверяем: не жаловался ли уже на этот конкретный код
+    if (user.invalid_codes_reported?.includes(code)) {
+      // Уже жаловался на этот код - просто добавляем в очередь
       await DB.addToQueue(userId);
       
       const msg = user?.language === 'en'
