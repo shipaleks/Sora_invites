@@ -179,7 +179,11 @@ async function handleDonation(ctx, user) {
       awaiting_donation_usage: true
     });
     
-    await ctx.reply(MESSAGES.chooseUsageCount(code), {
+    // Получаем актуальные данные для мотивации
+    const uniqueCodes = await DB.getUniqueCodesCount();
+    const currentQueueSize = await DB.getQueueSize();
+    
+    await ctx.reply(MESSAGES.chooseUsageCount(code, uniqueCodes, currentQueueSize), {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [
