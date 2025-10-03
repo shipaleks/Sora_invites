@@ -236,9 +236,10 @@ async function processNextInvite(bot, userId, codeObj) {
       {
         parse_mode: 'Markdown',
         reply_markup: {
-          inline_keyboard: [[
-            { text: MESSAGES.buttons.submitCodes, callback_data: 'submit_codes' }
-          ]]
+          inline_keyboard: [
+            [{ text: MESSAGES.buttons.submitCodes, callback_data: 'submit_codes' }],
+            [{ text: MESSAGES.buttons.reportInvalid, callback_data: 'report_invalid' }]
+          ]
         }
       }
     );
