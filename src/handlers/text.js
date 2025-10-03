@@ -480,6 +480,8 @@ Even 1 extra invite use will help someone get access to Sora!`
 
 async function handleAdminStat(ctx) {
   try {
+    await ctx.reply('📊 Генерирую статистику...');
+    
     const allUsers = await DB.getAllUsers();
     const poolSize = await DB.getPoolSize();
     const queueSize = await DB.getQueueSize();
@@ -498,7 +500,10 @@ async function handleAdminStat(ctx) {
       .sort((a, b) => (b.usage_count_shared || 0) - (a.usage_count_shared || 0))
       .slice(0, 5);
     
-    // Проблемные коды (на которые жаловались)
+    // Проблемные коды с авторами
+    const admin = await import('firebase-admin');
+    const db = admin.default.firestore();
+    
     const allReportedCodes = [];
     allUsers.forEach(u => {
       if (u.invalid_codes_reported && u.invalid_codes_reported.length > 0) {
@@ -507,11 +512,36 @@ async function handleAdminStat(ctx) {
           if (existing) {
             existing.count++;
           } else {
-            allReportedCodes.push({ code, count: 1 });
+            allReportedCodes.push({ code, count: 1, reporters: [] });
           }
         });
       }
     });
+    
+    // Находим авторов проблемных кодов
+    for (const reported of allReportedCodes) {
+      const poolEntry = await db.collection('invite_pool')
+        .where('code', '==', reported.code)
+        .limit(1)
+        .get();
+      
+      if (!poolEntry.empty) {
+        const authorId = poolEntry.docs[0].data().submitted_by;
+        
+        if (authorId.includes('donation:')) {
+          const userId = authorId.replace('donation:', '');
+          const author = await DB.getUser(userId);
+          reported.author = author ? `@${author.username}` : 'Unknown';
+        } else if (authorId === 'admin') {
+          reported.author = 'Admin';
+        } else {
+          const author = await DB.getUser(authorId);
+          reported.author = author ? `@${author.username}` : authorId;
+        }
+      } else {
+        reported.author = 'Unknown';
+      }
+    }
     
     const topReported = allReportedCodes
       .sort((a, b) => b.count - a.count)
@@ -523,6 +553,42 @@ async function handleAdminStat(ctx) {
     // Статистика по языкам
     const ruUsers = allUsers.filter(u => u.language === 'ru').length;
     const enUsers = allUsers.filter(u => u.language === 'en').length;
+    
+    // График динамики (последние 7 дней)
+    const invitesByDay = {};
+    allUsers.forEach(u => {
+      if (u.invite_sent_at) {
+        const date = u.invite_sent_at.toDate ? u.invite_sent_at.toDate() : new Date(u.invite_sent_at);
+        const dayKey = date.toISOString().split('T')[0];
+        invitesByDay[dayKey] = (invitesByDay[dayKey] || 0) + 1;
+      }
+    });
+    
+    const sortedDays = Object.keys(invitesByDay).sort();
+    const last7Days = sortedDays.slice(-7);
+    const inviteCounts = last7Days.map(day => invitesByDay[day]);
+    
+    // Генерируем URL для графика через QuickChart
+    const chartData = {
+      type: 'line',
+      data: {
+        labels: last7Days.map(d => d.substring(5)), // MM-DD
+        datasets: [{
+          label: 'Invites Sent',
+          data: inviteCounts,
+          borderColor: 'rgb(75, 192, 192)',
+          tension: 0.1
+        }]
+      },
+      options: {
+        title: {
+          display: true,
+          text: 'Invites Sent - Last 7 Days'
+        }
+      }
+    };
+    
+    const chartUrl = `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify(chartData))}`;
     
     const stat = `📊 **ДЕТАЛЬНАЯ СТАТИСТИКА**
 
@@ -541,25 +607,28 @@ async function handleAdminStat(ctx) {
 🇷🇺 Русский: ${ruUsers}
 🇬🇧 English: ${enUsers}
 
-**🏆 Топ донатеры:**
+**🏆 Топ-5 донатеров:**
 ${donors.length > 0 ? donors.map((u, i) => 
-  `${i + 1}. @${u.username}: ${u.usage_count_shared} использований`
+  `${i + 1}. @${u.username.replace(/_/g, '\\_')}: ${u.usage_count_shared} использований`
 ).join('\n') : 'Нет данных'}
 
-**🚫 Проблемные коды (жалобы):**
+**🚫 Проблемные коды:**
 ${topReported.length > 0 ? topReported.map(r => 
-  `\`${r.code}\` - ${r.count} ${r.count === 1 ? 'жалоба' : 'жалобы'}`
+  `\`${r.code}\` от ${r.author} - ${r.count} ${r.count === 1 ? 'жалоба' : 'жалоб'}`
 ).join('\n') : 'Нет жалоб'}
 
-**🔨 Забанено:**
-${bannedUsers.length} пользователей
-${bannedUsers.length > 0 ? bannedUsers.map(u => `@${u.username.replace(/_/g, '\\_')}: ${u.ban_reason}`).join('\n') : ''}
+**🔨 Забанено: ${bannedUsers.length}**
+${bannedUsers.length > 0 ? bannedUsers.map(u => `@${u.username.replace(/_/g, '\\_')}: ${u.ban_reason}`).join('\n') : ''}`;
 
-**📈 Система:**
-Первых 10: ${settings.first_10_count || 0}
-Всего кодов прошло: ${settings.first_10_count || 0}`;
-
-    return ctx.reply(stat, { parse_mode: 'Markdown' });
+    await ctx.reply(stat, { parse_mode: 'Markdown' });
+    
+    // Отправляем график
+    if (last7Days.length > 0) {
+      await ctx.replyWithPhoto({ url: chartUrl }, {
+        caption: '📈 Динамика отправки инвайтов за последние 7 дней'
+      });
+    }
+    
   } catch (error) {
     console.error('Error generating admin stats:', error);
     return ctx.reply('❌ Ошибка при генерации статистики');
