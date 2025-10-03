@@ -72,7 +72,6 @@ const MESSAGES = {
 **Сколько человек пригласить?**
 
 ⚠️ **Сейчас в пуле:** ${uniqueCodes} ${uniqueCodes === 1 ? 'уникальный код' : 'уникальных кода'}
-📊 **В очереди:** ${queueSize} человек
 
 💡 **Почему важно делиться больше:**
 Система работает только если отдают БОЛЬШЕ чем берут. Сейчас ~50% людей халявят и ничего не возвращают.
@@ -612,7 +611,6 @@ Head of Research at Yandex Search & AI`,
 **How many people to invite?**
 
 ⚠️ **In pool now:** ${uniqueCodes} unique code${uniqueCodes !== 1 ? 's' : ''}
-📊 **In queue:** ${queueSize} people
 
 💡 **Why sharing more matters:**
 System only works if people give MORE than they take. Currently ~50% freeload and return nothing.
