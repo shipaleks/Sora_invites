@@ -17,7 +17,16 @@ function startReminderScheduler(bot) {
     console.log('[Scheduler] Checking reminders...');
     
     try {
-      const usersWithInvites = await DB.getUsersWithStatus('received');
+      // Получаем распределённый лок (защита от параллельных инстансов)
+      const acquired = await DB.acquireLock('reminder_processor', 60);
+      
+      if (!acquired) {
+        console.log('[Scheduler] Reminder lock held by another instance, skipping');
+        return;
+      }
+      
+      try {
+        const usersWithInvites = await DB.getUsersWithStatus('received');
       
       for (const user of usersWithInvites) {
         // Пропускаем тех, кто вернул неиспользованный инвайт
@@ -98,7 +107,11 @@ function startReminderScheduler(bot) {
         }
       }
       
-      console.log('[Scheduler] Reminders check completed');
+        console.log('[Scheduler] Reminders check completed');
+      } finally {
+        // Всегда освобождаем лок
+        await DB.releaseLock('reminder_processor');
+      }
     } catch (error) {
       console.error('[Scheduler] Reminder error:', error);
     }
