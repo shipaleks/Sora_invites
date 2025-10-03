@@ -172,6 +172,20 @@ function startQueueProcessor(bot) {
         if (processed > 0) {
           console.log(`[Scheduler] Successfully processed ${processed} invites`);
         }
+        
+        // Проверка критического состояния пула
+        const finalPoolSize = await DB.getPoolSize();
+        const finalQueueSize = await DB.getQueueSize();
+        
+        if (finalPoolSize <= 2 && finalQueueSize > 0) {
+          // Пытаемся отправить срочный призыв (лок на 6 часов чтобы не спамить)
+          const urgentAcquired = await DB.acquireLock('urgent_help_request', 21600); // 6 часов
+          
+          if (urgentAcquired) {
+            console.log(`[Scheduler] Critical pool state! Sending urgent help request (pool: ${finalPoolSize}, queue: ${finalQueueSize})`);
+            await sendUrgentHelpRequest(bot);
+          }
+        }
       } finally {
         // Всегда освобождаем лок
         await DB.releaseLock('queue_processor');
@@ -262,3 +276,68 @@ async function processNextInvite(bot, userId, codeObj) {
     console.error(`[Queue] Failed to process invite for ${userId}:`, error);
   }
 }
+
+async function sendUrgentHelpRequest(bot) {
+  try {
+    const allUsers = await DB.getAllUsers();
+    
+    const targetUsers = allUsers.filter(u => 
+      (u.status === 'received' || u.status === 'completed') &&
+      (u.usage_count_shared || 0) < 4 &&
+      !u.is_banned
+    );
+    
+    if (targetUsers.length === 0) {
+      console.log('[Urgent] No users to notify');
+      return;
+    }
+    
+    let sent = 0;
+    
+    for (const user of targetUsers) {
+      try {
+        const { getMessages } = await import('../messages.js');
+        const MESSAGES = getMessages(user.language || 'ru');
+        
+        const urgentMessage = user.language === 'en'
+          ? `🚨 **URGENT: System Critical!**
+
+The invite pool is almost empty (≤2 codes) but people are waiting in queue.
+
+**Your help is needed NOW!**
+
+Please donate more invite uses if you can.
+
+/start → "💝 Donate Codes"`
+          : `🚨 **СРОЧНО: Критическая ситуация!**
+
+Пул инвайтов почти пуст (≤2 кода), а люди ждут в очереди.
+
+**Твоя помощь нужна СЕЙЧАС!**
+
+Пожалуйста пожертвуй дополнительные использования если можешь.
+
+/start → "💝 Пожертвовать коды"`;
+        
+        await bot.telegram.sendMessage(user.telegram_id, urgentMessage, {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [[
+              { text: MESSAGES.buttons.rohanAnswers, callback_data: 'rohan_answers' }
+            ]]
+          }
+        });
+        sent++;
+        
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        console.error(`[Urgent] Failed to notify ${user.telegram_id}:`, error.message);
+      }
+    }
+    
+    console.log(`[Urgent] Sent urgent help request to ${sent} users`);
+  } catch (error) {
+    console.error('[Urgent] Error sending urgent help:', error);
+  }
+}
+
