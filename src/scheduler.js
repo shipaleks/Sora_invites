@@ -199,6 +199,16 @@ async function processNextInvite(bot, userId, codeObj) {
       return;
     }
     
+    // НОВАЯ ПРОВЕРКА: Не получал ли пользователь этот код раньше?
+    // Проверяем список кодов на которые жаловался
+    if (user.invalid_codes_reported?.includes(codeObj.code)) {
+      console.log(`[Queue] User ${userId} already reported code ${codeObj.code}, skipping and trying next code`);
+      // Помечаем код как проблемный и пропускаем
+      await DB.markCodeAsSent(codeObj.id, 'skipped_reported');
+      // Не удаляем пользователя из очереди - scheduler попробует следующий код в следующем цикле
+      return;
+    }
+    
     const MESSAGES = getMessages(user.language || 'ru');
     
     // ВАЖНО: Сначала удаляем из очереди, потом отправляем

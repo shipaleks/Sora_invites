@@ -230,13 +230,13 @@ export function registerCallbacks(bot) {
     
     const code = user.invite_code_given;
     
-    // Проверяем не жаловался ли уже на этот код
-    if (user.invalid_codes_reported?.includes(code)) {
-      const msg = user?.language === 'en'
-        ? '⚠️ You already reported this code. We\'re working on it!'
-        : '⚠️ Ты уже жаловался на этот код. Мы работаем над этим!';
-      return ctx.reply(msg);
-    }
+    // Разрешаем повторную жалобу (может получить тот же код снова)
+    // if (user.invalid_codes_reported?.includes(code)) {
+    //   const msg = user?.language === 'en'
+    //     ? '⚠️ You already reported this code. We\'re working on it!'
+    //     : '⚠️ Ты уже жаловался на этот код. Мы работаем над этим!';
+    //   return ctx.reply(msg);
+    // }
     
     await ctx.reply(MESSAGES.reportInvalidPrompt(code, user?.language || 'ru'), {
       parse_mode: 'Markdown',
