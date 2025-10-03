@@ -12,8 +12,8 @@ export function startSchedulers(bot) {
 }
 
 function startReminderScheduler(bot) {
-  // Проверка каждый час (для точных напоминаний)
-  cron.schedule('0 * * * *', async () => {
+  // Проверка каждые 3 часа (оптимизация затрат Firebase)
+  cron.schedule('0 */3 * * *', async () => {
     console.log('[Scheduler] Checking reminders...');
     
     try {
@@ -121,8 +121,8 @@ function startReminderScheduler(bot) {
 }
 
 function startQueueProcessor(bot) {
-  // Проверка очереди каждую минуту
-  cron.schedule('* * * * *', async () => {
+  // Проверка очереди каждые 2 минуты (оптимизация затрат Firebase)
+  cron.schedule('*/2 * * * *', async () => {
     console.log('[Scheduler] Processing queue...');
     
     try {
