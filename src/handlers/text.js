@@ -451,16 +451,20 @@ async function handleRequestHelp(ctx, bot) {
 
 The invite pool is empty. People are waiting in queue.
 
-**Will you answer the call?**
+**Donate your Sora invite code!**
 
-Even 1 extra invite use will help someone get access to Sora!`
+You can share more uses of your code (even if you already shared some).
+
+Click the button to help! ⬇️`
         : `🔥 **ГОНДОР ЗОВЁТ НА ПОМОЩЬ!**
 
 Пул инвайтов опустел. Люди ждут в очереди.
 
-**Поможешь ли ты?**
+**Пожертвуй свой инвайт-код из Sora!**
 
-Даже 1 дополнительное использование инвайта поможет кому-то получить доступ!`;
+Можешь поделиться дополнительными использованиями своего кода (даже если уже делился).
+
+Нажми кнопку чтобы помочь! ⬇️`;
       
       await bot.telegram.sendMessage(user.telegram_id, helpMessage, {
         parse_mode: 'Markdown',
