@@ -426,11 +426,29 @@ async function handleRequestHelp(ctx, bot) {
     // Находим пользователей кто:
     // 1. Получил инвайт (received или completed)
     // 2. НЕ поделился всеми 4 использованиями
-    const targetUsers = allUsers.filter(u => 
-      (u.status === 'received' || u.status === 'completed') &&
-      (u.usage_count_shared || 0) < 4 &&
-      !u.is_banned
-    );
+    // 3. НЕ получал запрос помощи в последние 24 часа
+    const now = new Date();
+    const targetUsers = allUsers.filter(u => {
+      if ((u.status !== 'received' && u.status !== 'completed') || u.is_banned) {
+        return false;
+      }
+      
+      if ((u.usage_count_shared || 0) >= 4) {
+        return false;
+      }
+      
+      // Проверяем когда последний раз получал запрос помощи
+      if (u.last_help_request) {
+        const lastRequest = u.last_help_request.toDate ? u.last_help_request.toDate() : new Date(u.last_help_request);
+        const hoursSince = (now - lastRequest) / (1000 * 60 * 60);
+        
+        if (hoursSince < 24) {
+          return false; // Недавно получал запрос
+        }
+      }
+      
+      return true;
+    });
     
     if (targetUsers.length === 0) {
       await DB.releaseLock('help_request');
@@ -474,6 +492,12 @@ Click the button to help! ⬇️`
           ]]
         }
       });
+      
+      // Отмечаем что отправили запрос этому пользователю
+      await DB.updateUser(user.telegram_id, {
+        last_help_request: new Date()
+      });
+      
       successCount++;
       
       await new Promise(resolve => setTimeout(resolve, 100));
