@@ -554,6 +554,16 @@ async function handleAdminStat(ctx) {
     const ruUsers = allUsers.filter(u => u.language === 'ru').length;
     const enUsers = allUsers.filter(u => u.language === 'en').length;
     
+    // Распределение по количеству использований
+    const usageDistribution = {
+      1: allUsers.filter(u => u.usage_count_shared === 1).length,
+      2: allUsers.filter(u => u.usage_count_shared === 2).length,
+      3: allUsers.filter(u => u.usage_count_shared === 3).length,
+      4: allUsers.filter(u => u.usage_count_shared === 4).length
+    };
+    
+    const totalShared = Object.values(usageDistribution).reduce((a, b) => a + b, 0);
+    
     // График динамики (последние 7 дней)
     const invitesByDay = {};
     allUsers.forEach(u => {
@@ -606,6 +616,13 @@ async function handleAdminStat(ctx) {
 **🌍 Языки:**
 🇷🇺 Русский: ${ruUsers}
 🇬🇧 English: ${enUsers}
+
+**📊 Распределение по использованиям:**
+Поделились 1 использованием: ${usageDistribution[1]} чел
+Поделились 2 использованиями: ${usageDistribution[2]} чел
+Поделились 3 использованиями: ${usageDistribution[3]} чел
+Поделились 4 использованиями: ${usageDistribution[4]} чел (герои! ⚔️)
+Всего поделились: ${totalShared} из ${receivedInvites}
 
 **🏆 Топ-5 донатеров:**
 ${donors.length > 0 ? donors.map((u, i) => 
