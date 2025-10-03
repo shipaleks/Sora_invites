@@ -50,6 +50,9 @@ export function registerTextHandlers(bot) {
       if (text === '/requesthelp') {
         return handleRequestHelp(ctx, bot);
       }
+      if (text === '/adminstat') {
+        return handleAdminStat(ctx);
+      }
       // Остальные команды админа (start, stats, help, language) - пропускаем в commands.js
     }
     
@@ -472,6 +475,94 @@ Even 1 extra invite use will help someone get access to Sora!`
   } finally {
     // Освобождаем лок через 30 секунд после завершения
     setTimeout(() => DB.releaseLock('help_request'), 30000);
+  }
+}
+
+async function handleAdminStat(ctx) {
+  try {
+    const allUsers = await DB.getAllUsers();
+    const poolSize = await DB.getPoolSize();
+    const queueSize = await DB.getQueueSize();
+    const settings = await DB.getSystemSettings();
+    
+    // Основная статистика
+    const totalUsers = allUsers.length;
+    const receivedInvites = allUsers.filter(u => u.status === 'received' || u.status === 'completed').length;
+    const returnedCodes = allUsers.filter(u => u.codes_returned > 0).length;
+    const notReturned = receivedInvites - returnedCodes;
+    const returnRate = receivedInvites > 0 ? Math.round((returnedCodes / receivedInvites) * 100) : 0;
+    
+    // Топ донатеры (по количеству использований)
+    const donors = allUsers
+      .filter(u => u.usage_count_shared > 0)
+      .sort((a, b) => (b.usage_count_shared || 0) - (a.usage_count_shared || 0))
+      .slice(0, 5);
+    
+    // Проблемные коды (на которые жаловались)
+    const allReportedCodes = [];
+    allUsers.forEach(u => {
+      if (u.invalid_codes_reported && u.invalid_codes_reported.length > 0) {
+        u.invalid_codes_reported.forEach(code => {
+          const existing = allReportedCodes.find(r => r.code === code);
+          if (existing) {
+            existing.count++;
+          } else {
+            allReportedCodes.push({ code, count: 1 });
+          }
+        });
+      }
+    });
+    
+    const topReported = allReportedCodes
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+    
+    // Забаненные пользователи
+    const bannedUsers = allUsers.filter(u => u.is_banned);
+    
+    // Статистика по языкам
+    const ruUsers = allUsers.filter(u => u.language === 'ru').length;
+    const enUsers = allUsers.filter(u => u.language === 'en').length;
+    
+    const stat = `📊 **ДЕТАЛЬНАЯ СТАТИСТИКА**
+
+**🎯 Основное:**
+Всего пользователей: ${totalUsers}
+Получили инвайты: ${receivedInvites}
+Вернули коды: ${returnedCodes} (${returnRate}%)
+Не вернули: ${notReturned}
+
+**💎 Пул и очередь:**
+Кодов в пуле: ${poolSize}
+В очереди: ${queueSize}
+Соотношение: ${poolSize > 0 ? (poolSize / Math.max(queueSize, 1)).toFixed(2) : '0'}
+
+**🌍 Языки:**
+🇷🇺 Русский: ${ruUsers}
+🇬🇧 English: ${enUsers}
+
+**🏆 Топ донатеры:**
+${donors.length > 0 ? donors.map((u, i) => 
+  `${i + 1}. @${u.username}: ${u.usage_count_shared} использований`
+).join('\n') : 'Нет данных'}
+
+**🚫 Проблемные коды (жалобы):**
+${topReported.length > 0 ? topReported.map(r => 
+  `\`${r.code}\` - ${r.count} ${r.count === 1 ? 'жалоба' : 'жалобы'}`
+).join('\n') : 'Нет жалоб'}
+
+**🔨 Забанено:**
+${bannedUsers.length} пользователей
+${bannedUsers.length > 0 ? bannedUsers.map(u => `@${u.username.replace(/_/g, '\\_')}: ${u.ban_reason}`).join('\n') : ''}
+
+**📈 Система:**
+Первых 10: ${settings.first_10_count || 0}
+Всего кодов прошло: ${settings.first_10_count || 0}`;
+
+    return ctx.reply(stat, { parse_mode: 'Markdown' });
+  } catch (error) {
+    console.error('Error generating admin stats:', error);
+    return ctx.reply('❌ Ошибка при генерации статистики');
   }
 }
 
