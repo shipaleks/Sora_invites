@@ -306,24 +306,21 @@ The invite pool is almost empty (≤2 codes) but people are waiting in queue.
 
 **Your help is needed NOW!**
 
-Please donate more invite uses if you can.
-
-/start → "💝 Donate Codes"`
+Please donate more invite uses if you can.`
           : `🚨 **СРОЧНО: Критическая ситуация!**
 
 Пул инвайтов почти пуст (≤2 кода), а люди ждут в очереди.
 
 **Твоя помощь нужна СЕЙЧАС!**
 
-Пожалуйста пожертвуй дополнительные использования если можешь.
-
-/start → "💝 Пожертвовать коды"`;
+Пожалуйста пожертвуй дополнительные использования если можешь.`;
         
+        // Обычная кнопка донейта (без эпичного "Рохан явится")
         await bot.telegram.sendMessage(user.telegram_id, urgentMessage, {
           parse_mode: 'Markdown',
           reply_markup: {
             inline_keyboard: [[
-              { text: MESSAGES.buttons.rohanAnswers, callback_data: 'rohan_answers' }
+              { text: MESSAGES.buttons.donateCodes, callback_data: 'donate_codes' }
             ]]
           }
         });
