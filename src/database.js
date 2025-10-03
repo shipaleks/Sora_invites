@@ -264,6 +264,19 @@ export const DB = {
     return snapshot.size;
   },
 
+  async getUniqueCodesCount() {
+    const snapshot = await db.collection('invite_pool')
+      .where('status', '==', 'available')
+      .get();
+    
+    const uniqueCodes = new Set();
+    snapshot.docs.forEach(doc => {
+      uniqueCodes.add(doc.data().code);
+    });
+    
+    return uniqueCodes.size;
+  },
+
   async removeCodeFromPool(code) {
     const snapshot = await db.collection('invite_pool')
       .where('code', '==', code.toUpperCase())

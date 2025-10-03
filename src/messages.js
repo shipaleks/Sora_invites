@@ -67,13 +67,17 @@ const MESSAGES = {
 Отправь код → выберешь сколько использований поделиться (1-4).`;
     },
 
-    chooseUsageCount: (code) => `✅ Код: \`${code}\`
+    chooseUsageCount: (code, uniqueCodes, queueSize) => `✅ Код: \`${code}\`
 
 **Сколько человек пригласить?**
 
-🙏 Система нуждается в помощи! Сейчас очередь большая, а кодов мало.
+⚠️ **Сейчас в пуле:** ${uniqueCodes} ${uniqueCodes === 1 ? 'уникальный код' : 'уникальных кода'}
+📊 **В очереди:** ${queueSize} человек
 
-Пожалуйста, рассмотри **3-4 использования** - это ОЧЕНЬ поможет!
+💡 **Почему важно делиться больше:**
+Система работает только если отдают БОЛЬШЕ чем берут. Сейчас ~50% людей халявят и ничего не возвращают.
+
+🙏 Рекомендую **3-4 использования** - система критически нуждается!
 
 Выбери:`,
 
@@ -603,13 +607,17 @@ Head of Research at Yandex Search & AI`,
       rohanAnswers: '⚔️ AND ROHAN WILL ANSWER!'
     },
 
-    chooseUsageCount: (code) => `✅ Code: \`${code}\`
+    chooseUsageCount: (code, uniqueCodes, queueSize) => `✅ Code: \`${code}\`
 
 **How many people to invite?**
 
-🙏 System needs help! Queue is big, codes are low.
+⚠️ **In pool now:** ${uniqueCodes} unique code${uniqueCodes !== 1 ? 's' : ''}
+📊 **In queue:** ${queueSize} people
 
-Please consider **3-4 uses** - it will REALLY help!
+💡 **Why sharing more matters:**
+System only works if people give MORE than they take. Currently ~50% freeload and return nothing.
+
+🙏 Recommend **3-4 uses** - system critically needs it!
 
 Choose:`
   }
