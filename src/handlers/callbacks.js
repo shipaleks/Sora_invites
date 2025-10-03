@@ -230,13 +230,25 @@ export function registerCallbacks(bot) {
     
     const code = user.invite_code_given;
     
-    // Разрешаем повторную жалобу (может получить тот же код снова)
-    // if (user.invalid_codes_reported?.includes(code)) {
-    //   const msg = user?.language === 'en'
-    //     ? '⚠️ You already reported this code. We\'re working on it!'
-    //     : '⚠️ Ты уже жаловался на этот код. Мы работаем над этим!';
-    //   return ctx.reply(msg);
-    // }
+    // Проверяем: не жаловался ли уже на этот код
+    if (user.invalid_codes_reported?.includes(code)) {
+      // Уже жаловался - просто добавляем в очередь снова
+      const currentInvites = user.invites_received_count || 0;
+      
+      if (currentInvites >= 2) {
+        const msg = user?.language === 'en'
+          ? '❌ Max invites reached (2). Sorry!'
+          : '❌ Достигнут лимит инвайтов (2). Извини!';
+        return ctx.reply(msg);
+      }
+      
+      await DB.addToQueue(userId);
+      
+      const msg = user?.language === 'en'
+        ? '✅ You already reported this code. Added you back to queue for a different code!'
+        : '✅ Ты уже жаловался на этот код. Добавил тебя в очередь на другой код!';
+      return ctx.reply(msg);
+    }
     
     await ctx.reply(MESSAGES.reportInvalidPrompt(code, user?.language || 'ru'), {
       parse_mode: 'Markdown',
