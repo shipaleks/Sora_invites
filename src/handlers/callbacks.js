@@ -334,64 +334,132 @@ export function registerCallbacks(bot) {
     const MESSAGES = getMessages(user?.language || 'ru');
     
     try {
-      // Отмечаем жалобу
-      await DB.updateUser(userId, {
-        invalid_codes_reported: [...(user.invalid_codes_reported || []), code]
-      });
-      
-      // Находим всех кто получил этот код
-      const allUsers = await DB.getAllUsers();
-      const affectedUsers = allUsers.filter(u => 
-        u.invite_code_given === code && 
-        u.telegram_id !== String(userId)
-      );
-      
-      // Если есть другие получатели - спрашиваем у них
-      if (affectedUsers.length > 0) {
-        for (const affectedUser of affectedUsers) {
-          try {
-            const msg = getMessages(affectedUser.language || 'ru');
-            await bot.telegram.sendMessage(
-              affectedUser.telegram_id,
-              msg.invalidCodeConfirm(code, affectedUser.language),
-              {
-                parse_mode: 'Markdown',
-                reply_markup: {
-                  inline_keyboard: [
-                    [{ text: msg.buttons.codeWorks, callback_data: `code_works_${code}` }],
-                    [{ text: msg.buttons.codeInvalid, callback_data: `code_invalid_${code}` }]
-                  ]
-                }
-              }
-            );
-          } catch (error) {
-            console.error(`Failed to notify user ${affectedUser.telegram_id}:`, error.message);
-          }
-        }
+      // ПРОВЕРКА: Может жаловаться только тот, кто получил этот код от бота
+      if (user.invite_code_given?.toUpperCase() !== code.toUpperCase()) {
+        const msg = user?.language === 'en'
+          ? '❌ You can only report codes that YOU received from the bot.'
+          : '❌ Можно жаловаться только на коды, которые ТЫ получил от бота.';
+        return ctx.editMessageText(msg);
       }
+      
+      // ПРОВЕРКА: Не жаловался ли уже на этот код
+      if (user.invalid_codes_reported?.includes(code)) {
+        const msg = user?.language === 'en'
+          ? '⚠️ You already reported this code.'
+          : '⚠️ Ты уже жаловался на этот код.';
+        return ctx.editMessageText(msg);
+      }
+      
+      // Отмечаем жалобу (уникальную)
+      await DB.updateUser(userId, {
+        invalid_codes_reported: [...(user.invalid_codes_reported || []), code],
+        last_report_time: new Date()
+      });
       
       // Находим автора кода
       const poolEntries = await db.collection('invite_pool')
         .where('code', '==', code)
         .get();
       
+      let authorId = null;
+      let author = null;
+      
       if (!poolEntries.empty) {
-        const authorId = poolEntries.docs[0].data().submitted_by;
+        authorId = poolEntries.docs[0].data().submitted_by;
         
-        // Не отправляем если автор - система/админ/donation
-        if (!authorId.includes('admin') && !authorId.includes('system') && !authorId.includes('donation') && !authorId.includes('unused')) {
-          try {
-            const author = await DB.getUser(authorId);
-            if (author) {
-              const authorMsg = getMessages(author.language || 'ru');
-              await bot.telegram.sendMessage(
-                author.telegram_id,
-                authorMsg.authorWarning(code, 1, author.language),
-                { parse_mode: 'Markdown' }
-              );
+        // Извлекаем реальный ID автора
+        let realAuthorId = authorId;
+        if (authorId.includes('donation:')) {
+          realAuthorId = authorId.replace('donation:', '');
+        } else if (authorId.includes('unused:')) {
+          realAuthorId = authorId.replace('unused:', '');
+        }
+        
+        // Не баним админа/систему
+        if (!authorId.includes('admin') && !authorId.includes('system')) {
+          author = await DB.getUser(realAuthorId);
+          
+          if (author) {
+            // Подсчитываем ВСЕ уникальные жалобы на ВСЕ коды этого автора
+            const allUsers = await DB.getAllUsers();
+            
+            // Находим все коды этого автора
+            const authorCodesQuery = await db.collection('invite_pool')
+              .where('submitted_by', '==', realAuthorId)
+              .get();
+            
+            const authorCodesDonation = await db.collection('invite_pool')
+              .where('submitted_by', '==', `donation:${realAuthorId}`)
+              .get();
+            
+            const authorCodesUnused = await db.collection('invite_pool')
+              .where('submitted_by', '==', `unused:${realAuthorId}`)
+              .get();
+            
+            const authorCodes = new Set();
+            authorCodesQuery.forEach(doc => authorCodes.add(doc.data().code));
+            authorCodesDonation.forEach(doc => authorCodes.add(doc.data().code));
+            authorCodesUnused.forEach(doc => authorCodes.add(doc.data().code));
+            
+            // Считаем уникальные жалобы на коды этого автора
+            const uniqueComplaints = new Set();
+            allUsers.forEach(u => {
+              if (u.invalid_codes_reported && u.invalid_codes_reported.length > 0) {
+                u.invalid_codes_reported.forEach(reportedCode => {
+                  if (authorCodes.has(reportedCode)) {
+                    uniqueComplaints.add(u.telegram_id); // Один пользователь = одна жалоба
+                  }
+                });
+              }
+            });
+            
+            const complaintsCount = uniqueComplaints.size;
+            
+            console.log(`[COMPLAINTS] Author @${author.username}: ${complaintsCount} unique complaints`);
+            
+            // АВТОМАТИЧЕСКИЙ SHADOW BAN после 3 уникальных жалоб
+            if (complaintsCount >= 3 && !author.is_banned) {
+              await DB.banUser(realAuthorId, `Автобан: ${complaintsCount} жалоб на коды`);
+              
+              // Удаляем все коды этого автора из пула
+              const deletePromises = [];
+              for (const codeToDelete of authorCodes) {
+                const deleteQuery = db.collection('invite_pool').where('code', '==', codeToDelete);
+                const snapshot = await deleteQuery.get();
+                snapshot.forEach(doc => {
+                  deletePromises.push(doc.ref.delete());
+                });
+              }
+              await Promise.all(deletePromises);
+              
+              // Уведомляем админа
+              try {
+                await bot.telegram.sendMessage(
+                  config.telegram.adminId,
+                  `🔨 **АВТОБАН**: @${author.username}\n\n` +
+                  `Причина: ${complaintsCount} уникальных жалоб\n` +
+                  `Удалено кодов: ${authorCodes.size}\n` +
+                  `Коды: ${Array.from(authorCodes).map(c => `\`${c}\``).join(', ')}`,
+                  { parse_mode: 'Markdown' }
+                );
+              } catch (error) {
+                console.error('Admin notification failed:', error.message);
+              }
+              
+              console.log(`[AUTOBAN] @${author.username} banned: ${complaintsCount} complaints`);
+            } else if (!author.is_banned) {
+              // Просто предупреждаем автора
+              try {
+                const authorMsg = getMessages(author.language || 'ru');
+                await bot.telegram.sendMessage(
+                  author.telegram_id,
+                  authorMsg.authorWarning(code, complaintsCount, author.language),
+                  { parse_mode: 'Markdown' }
+                );
+              } catch (error) {
+                console.error(`Failed to notify author ${realAuthorId}:`, error.message);
+              }
             }
-          } catch (error) {
-            console.error(`Failed to notify author ${authorId}:`, error.message);
           }
         }
       }
@@ -407,22 +475,26 @@ export function registerCallbacks(bot) {
       }
       
       const msg = user?.language === 'en'
-        ? `✅ Report received. We're checking with other users and notifying the author.\n\nYou'll get a new invite soon!`
-        : `✅ Жалоба принята. Проверяем у других пользователей и уведомляем автора.\n\nСкоро получишь новый инвайт!`;
+        ? `✅ Report received and processed.\n\n${author?.is_banned ? '🔨 The author has been auto-banned (3+ complaints).\n\n' : ''}You'll get a new invite soon!`
+        : `✅ Жалоба принята и обработана.\n\n${author?.is_banned ? '🔨 Автор автоматически забанен (3+ жалобы).\n\n' : ''}Скоро получишь новый инвайт!`;
       
       await ctx.editMessageText(msg);
       
       // Добавляем обратно в очередь с высоким приоритетом
       await DB.addToQueue(userId);
       
-      // Уведомление админу
-      try {
-        await bot.telegram.sendMessage(
-          config.telegram.adminId,
-          `🚫 Жалоба на код от @${user.username}\nКод: ${code}\nДругих получателей: ${affectedUsers.length}`
-        );
-      } catch (error) {
-        console.error('Admin notification failed:', error.message);
+      // Уведомление админу (если не было автобана)
+      if (author && !author.is_banned) {
+        try {
+          const complaintsCount = uniqueComplaints ? uniqueComplaints.size : 1;
+          await bot.telegram.sendMessage(
+            config.telegram.adminId,
+            `🚫 Жалоба на код от @${user.username}\nКод: \`${code}\`\nАвтор: @${author.username}\nЖалоб на автора: ${complaintsCount}/3`,
+            { parse_mode: 'Markdown' }
+          );
+        } catch (error) {
+          console.error('Admin notification failed:', error.message);
+        }
       }
       
     } catch (error) {
