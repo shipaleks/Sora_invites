@@ -371,14 +371,100 @@ async function handleBan(ctx, text) {
     return ctx.reply(`❌ Пользователь ${username} не найден`);
   }
   
-  await DB.banUser(user.telegram_id, reason);
+  await ctx.reply('🔨 Баню пользователя и очищаю базу от скам-кодов...');
   
-  // Экранируем спецсимволы Markdown в username
-  const safeUsername = user.username.replace(/_/g, '\\_');
+  // Импортируем Firestore для прямой работы с базой
+  const admin = await import('firebase-admin');
+  const db = admin.default.firestore();
+  const bot = ctx.telegram;
   
-  return ctx.reply(`✅ Забанен: @${safeUsername}\nПричина: ${reason}`, { 
-    parse_mode: 'Markdown' 
-  });
+  try {
+    // 1. Находим ВСЕ коды, добавленные этим пользователем
+    const scamCodes = [];
+    
+    // Коды из пула (активные)
+    const poolQuery = await db.collection('invite_pool')
+      .where('submitted_by', '==', user.telegram_id)
+      .get();
+    
+    poolQuery.forEach(doc => {
+      scamCodes.push(doc.data().code);
+    });
+    
+    // Коды из пула (donation)
+    const donationQuery = await db.collection('invite_pool')
+      .where('submitted_by', '==', `donation:${user.telegram_id}`)
+      .get();
+    
+    donationQuery.forEach(doc => {
+      scamCodes.push(doc.data().code);
+    });
+    
+    // Уникальные коды
+    const uniqueScamCodes = [...new Set(scamCodes)];
+    
+    // 2. Находим всех пользователей, которые получили эти коды
+    const allUsers = await DB.getAllUsers();
+    const victims = allUsers.filter(u => 
+      u.invite_code_given && uniqueScamCodes.includes(u.invite_code_given.toUpperCase())
+    );
+    
+    // 3. Удаляем ВСЕ скам-коды из пула (включая дубликаты)
+    const poolDeletePromises = [];
+    
+    // Удаляем все коды из пула
+    for (const code of uniqueScamCodes) {
+      const deleteQuery = db.collection('invite_pool').where('code', '==', code);
+      const snapshot = await deleteQuery.get();
+      snapshot.forEach(doc => {
+        poolDeletePromises.push(doc.ref.delete());
+      });
+    }
+    
+    await Promise.all(poolDeletePromises);
+    
+    // 4. Баним пользователя
+    await DB.banUser(user.telegram_id, reason);
+    
+    // 5. Отправляем уведомления жертвам
+    let notifiedCount = 0;
+    for (const victim of victims) {
+      try {
+        const victimLang = victim.language || 'ru';
+        const message = victimLang === 'en' 
+          ? `⚠️ **ATTENTION: Scam code detected!**\n\nThe invite code you received was invalid.\nThe scammer has been banned.\n\n✅ You can request a new invite now - just click /start and choose "Get Invite"`
+          : `⚠️ **ВНИМАНИЕ: Обнаружен скам!**\n\nКод, который ты получил, оказался фейковым.\nМошенник забанен.\n\n✅ Можешь запросить новый инвайт - просто нажми /start и выбери "Получить инвайт"`;
+        
+        await bot.sendMessage(victim.telegram_id, message, { parse_mode: 'Markdown' });
+        
+        // Сбрасываем статус жертвы, чтобы могли запросить новый инвайт
+        await DB.updateUser(victim.telegram_id, {
+          status: 'new',
+          invite_code_given: null,
+          invite_sent_at: null
+        });
+        
+        notifiedCount++;
+      } catch (error) {
+        console.error(`Failed to notify victim ${victim.username}:`, error.message);
+      }
+    }
+    
+    // Экранируем спецсимволы Markdown в username
+    const safeUsername = user.username.replace(/_/g, '\\_');
+    
+    const report = `✅ **Бан завершён: @${safeUsername}**\n\n` +
+      `📋 Причина: ${reason}\n` +
+      `🗑️ Удалено кодов: ${uniqueScamCodes.length}\n` +
+      `👥 Жертв оповещено: ${notifiedCount}\n\n` +
+      `${uniqueScamCodes.length > 0 ? `🚫 Удалённые коды:\n${uniqueScamCodes.map(c => `\`${c}\``).join(', ')}` : ''}`;
+    
+    return ctx.reply(report, { parse_mode: 'Markdown' });
+    
+  } catch (error) {
+    console.error('Ban error:', error);
+    return ctx.reply('❌ Ошибка при бане. Проверь логи.');
+  }
 }
 
 async function handleUnban(ctx, text) {
