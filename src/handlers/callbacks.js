@@ -363,6 +363,7 @@ export function registerCallbacks(bot) {
       
       let authorId = null;
       let author = null;
+      let complaintsCount = 0;
       
       if (!poolEntries.empty) {
         authorId = poolEntries.docs[0].data().submitted_by;
@@ -413,7 +414,7 @@ export function registerCallbacks(bot) {
               }
             });
             
-            const complaintsCount = uniqueComplaints.size;
+            complaintsCount = uniqueComplaints.size;
             
             console.log(`[COMPLAINTS] Author @${author.username}: ${complaintsCount} unique complaints`);
             
@@ -486,7 +487,6 @@ export function registerCallbacks(bot) {
       // Уведомление админу (если не было автобана)
       if (author && !author.is_banned) {
         try {
-          const complaintsCount = uniqueComplaints ? uniqueComplaints.size : 1;
           await bot.telegram.sendMessage(
             config.telegram.adminId,
             `🚫 Жалоба на код от @${user.username}\nКод: \`${code}\`\nАвтор: @${author.username}\nЖалоб на автора: ${complaintsCount}/3`,
