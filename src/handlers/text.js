@@ -147,7 +147,6 @@ async function handleCodeSubmission(ctx, user) {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [
-          [{ text: MESSAGES.buttons.usage1, callback_data: 'usage_1' }],
           [{ text: MESSAGES.buttons.usage2, callback_data: 'usage_2' }],
           [{ text: MESSAGES.buttons.usage3, callback_data: 'usage_3' }],
           [{ text: MESSAGES.buttons.usage4, callback_data: 'usage_4' }]
@@ -187,7 +186,6 @@ async function handleDonation(ctx, user) {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [
-          [{ text: MESSAGES.buttons.usage1, callback_data: 'donation_usage_1' }],
           [{ text: MESSAGES.buttons.usage2, callback_data: 'donation_usage_2' }],
           [{ text: MESSAGES.buttons.usage3, callback_data: 'donation_usage_3' }],
           [{ text: MESSAGES.buttons.usage4, callback_data: 'donation_usage_4' }]

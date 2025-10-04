@@ -5,14 +5,14 @@ const STOP_WORDS = [
 ];
 
 export function validateInviteCode(code) {
-  // Базовая валидация - код должен быть строкой длиной от 5 до 10 символов (обычно 6)
+  // Базовая валидация - код должен быть строкой РОВНО 6 символов
   if (typeof code !== 'string') return false;
   
   // Убираем пробелы
   const trimmed = code.trim().toUpperCase();
   
-  // Код обычно 6 символов, но допускаем 5-10
-  if (trimmed.length < 5 || trimmed.length > 10) return false;
+  // Код СТРОГО 6 символов (настоящие коды Sora всегда 6)
+  if (trimmed.length !== 6) return false;
   
   // Код должен состоять ТОЛЬКО из букв и цифр (БЕЗ дефисов и спецсимволов)
   if (!/^[A-Za-z0-9]+$/.test(trimmed)) return false;
@@ -26,8 +26,8 @@ export function validateInviteCode(code) {
 export function extractCodes(text) {
   const codes = [];
   
-  // Паттерн 1: "Join Sora with my invite code: XXXXXX!" - только буквы и цифры
-  const pattern1 = /invite code:\s*([A-Za-z0-9]{5,10})/gi;
+  // Паттерн 1: "Join Sora with my invite code: XXXXXX!" - СТРОГО 6 символов
+  const pattern1 = /invite code:\s*([A-Za-z0-9]{6})/gi;
   let match;
   while ((match = pattern1.exec(text)) !== null) {
     const code = match[1].toUpperCase();
@@ -51,8 +51,8 @@ export function extractCodes(text) {
       continue;
     }
     
-    // Если вся строка похожа на код (5-10 символов, только буквы и цифры)
-    if (/^[A-Za-z0-9]{5,10}$/.test(trimmed)) {
+    // Если вся строка похожа на код (СТРОГО 6 символов, только буквы и цифры)
+    if (/^[A-Za-z0-9]{6}$/.test(trimmed)) {
       const code = trimmed.toUpperCase();
       if (!codes.includes(code) && !STOP_WORDS.includes(code)) {
         codes.push(code);
