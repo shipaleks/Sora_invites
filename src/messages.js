@@ -184,7 +184,11 @@ ${poolSize > queueSize
 \`/adminstat\` - 📊 Детальная статистика
 \`/addcodes КОД [N]\` - Добавить код (1-4)
 \`/removecode КОД\` - Удалить код
-\`/ban @user причина\` - Забанить
+\`/ban @user причина\` - 🔨 **МОЩНЫЙ БАН:**
+  • Shadow ban (не видит что забанен)
+  • Удаляет ВСЕ его коды из пула
+  • Оповещает всех жертв скама
+  • Сбрасывает статус для повторного запроса
 \`/unban @user\` - Разбанить
 \`/requesthelp\` - 🆘 Запрос помощи (рассылка)
 \`/clearpool\` / \`/clearqueue\` - Очистить
@@ -580,12 +584,20 @@ Head of Research at Yandex Search & AI`,
 
     adminHelp: `🔧 **Admin Commands:**
 
-\`/addcodes code1 code2 code3\` - Add codes manually
-\`/removecode CODE\` - Remove code from pool
-\`/poolsize\` - Pool size
-\`/queuesize\` - Queue size
-\`/broadcast text\` - Broadcast to all users
-\`/stats\` - System statistics`,
+\`/adminstat\` - 📊 Detailed statistics
+\`/addcodes CODE [N]\` - Add code (1-4 uses)
+\`/removecode CODE\` - Remove code
+\`/ban @user reason\` - 🔨 **POWERFUL BAN:**
+  • Shadow ban (they don't see they're banned)
+  • Removes ALL their codes from pool
+  • Notifies all scam victims
+  • Resets status for re-request
+\`/unban @user\` - Unban user
+\`/requesthelp\` - 🆘 Help request (broadcast)
+\`/clearpool\` / \`/clearqueue\` - Clear data
+\`/finduser ID\` - Find user
+\`/poolsize\` / \`/queuesize\` - Sizes
+\`/broadcast text\` - Broadcast to all`,
 
     buttons: {
       wantInvite: '🎫 Want Invite',
