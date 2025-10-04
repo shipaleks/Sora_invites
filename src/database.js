@@ -182,21 +182,24 @@ export const DB = {
     
     console.log(`[Pool] Code ${code}: total usage ${totalUsage}, requesting ${usageLimit} more`);
     
-    // Максимум 4 использования на код ВСЕГО
-    if (totalUsage >= 4) {
-      console.log(`[Pool] Code ${code} exhausted (4/4 uses)`);
+    // Мягкий лимит: максимум 20 использований на код (Sora пополняет коды)
+    // Раньше было 4, но Sora теперь даёт дополнительные использования
+    const MAX_CODE_USAGE = 20;
+    
+    if (totalUsage >= MAX_CODE_USAGE) {
+      console.log(`[Pool] Code ${code} reached max usage (${MAX_CODE_USAGE}/${MAX_CODE_USAGE})`);
       return 0;
     }
     
-    // Сколько использований можем добавить (до 4 общих)
-    const availableSlots = Math.min(usageLimit, 4 - totalUsage);
+    // Сколько использований можем добавить
+    const availableSlots = Math.min(usageLimit, MAX_CODE_USAGE - totalUsage);
     
     if (availableSlots === 0) {
       console.log(`[Pool] No available slots for ${code}`);
       return 0;
     }
     
-    console.log(`[Pool] Adding ${availableSlots} uses of ${code} (will be ${totalUsage + availableSlots}/4 total)`);
+    console.log(`[Pool] Adding ${availableSlots} uses of ${code} (will be ${totalUsage + availableSlots}/${MAX_CODE_USAGE} total)`);
     
     const batch = db.batch();
     
