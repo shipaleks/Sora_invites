@@ -14,6 +14,22 @@ export function registerCommands(bot) {
       await DB.incrementTotalUsers();
     }
     
+    // SHADOW BAN: показываем интерфейс, но ограничиваем
+    if (user.is_banned) {
+      console.log(`[SHADOW BAN] Banned user @${user.username} accessed /start`);
+      // Показываем обычное приветствие
+      const MESSAGES = getMessages(user.language || 'ru');
+      return ctx.reply(MESSAGES.welcome, {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: MESSAGES.buttons.wantInvite, callback_data: 'want_invite' }],
+            [{ text: MESSAGES.buttons.donateCodes, callback_data: 'donate_codes' }]
+          ]
+        },
+        parse_mode: 'Markdown'
+      });
+    }
+    
     // Если язык не выбран, показываем выбор языка
     if (!user.language) {
       const MESSAGES = getMessages('ru'); // Показываем на русском по умолчанию
@@ -65,6 +81,15 @@ export function registerCommands(bot) {
     
     if (!user) {
       return ctx.reply(MESSAGES.notInSystem, { parse_mode: 'Markdown' });
+    }
+    
+    // SHADOW BAN: показываем фейковую статистику
+    if (user.is_banned) {
+      console.log(`[SHADOW BAN] Banned user @${user.username} accessed /stats`);
+      const fakeStats = user.language === 'en' 
+        ? '📊 **Your Stats**\n\n✅ Position in queue: Not in queue\n📦 Pool size: 15 codes\n👥 Queue size: 3 people\n🎁 Codes returned: 0'
+        : '📊 **Твоя статистика**\n\n✅ Позиция в очереди: Не в очереди\n📦 Размер пула: 15 кодов\n👥 Размер очереди: 3 человека\n🎁 Возвращено кодов: 0';
+      return ctx.reply(fakeStats, { parse_mode: 'Markdown' });
     }
     
     const position = await DB.getQueuePosition(userId);

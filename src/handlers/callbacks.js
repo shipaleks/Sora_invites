@@ -43,6 +43,15 @@ export function registerCallbacks(bot) {
       return ctx.reply(MESSAGES.notInSystem, { parse_mode: 'Markdown' });
     }
     
+    // SHADOW BAN: показываем правила но не добавляем в очередь
+    if (user.is_banned) {
+      console.log(`[SHADOW BAN] Banned user @${user.username} clicked want_invite`);
+      const fakeMsg = user.language === 'en' 
+        ? '⏳ High demand right now. Please try again in a few hours!'
+        : '⏳ Сейчас большой спрос. Попробуй через несколько часов!';
+      return ctx.reply(fakeMsg, { parse_mode: 'Markdown' });
+    }
+    
     // Проверка, не в очереди ли уже
     const position = await DB.getQueuePosition(userId);
     if (position && user.status === 'waiting') {
@@ -87,6 +96,16 @@ export function registerCallbacks(bot) {
       return ctx.reply(MESSAGES.notInSystem, { parse_mode: 'Markdown' });
     }
     
+    // SHADOW BAN: не добавляем в очередь
+    if (user.is_banned) {
+      // Показываем будто добавили
+      await ctx.reply('✅ ' + (user.language === 'en' ? 'You are in queue! Position: ~5' : 'Ты в очереди! Позиция: ~5'), {
+        parse_mode: 'Markdown'
+      });
+      console.log(`[SHADOW BAN] User @${user.username} tried to join queue (banned)`);
+      return;
+    }
+    
     // Проверка, не в очереди ли уже
     const existingPosition = await DB.getQueuePosition(userId);
     if (existingPosition) {
@@ -121,6 +140,13 @@ export function registerCallbacks(bot) {
     const user = await DB.getUser(userId);
     
     const MESSAGES = getMessages(user?.language || 'ru');
+    
+    // SHADOW BAN для отправки кодов
+    if (user?.is_banned) {
+      console.log(`[SHADOW BAN] Banned user @${user.username} clicked submit_codes`);
+      const msg = user.language === 'en' ? '✅ Please send your code now' : '✅ Отправь свой код сейчас';
+      return ctx.reply(msg, { parse_mode: 'Markdown' });
+    }
     
     if (!user || user.status !== 'received') {
       const msg = user?.language === 'en' ? '❌ You haven\'t received an invite yet' : '❌ Ты ещё не получил инвайт';
@@ -176,6 +202,13 @@ export function registerCallbacks(bot) {
     
     const MESSAGES = getMessages(user?.language || 'ru');
     
+    // SHADOW BAN для пожертвований
+    if (user?.is_banned) {
+      console.log(`[SHADOW BAN] Banned user @${user.username} clicked donate_codes`);
+      const msg = user.language === 'en' ? '✅ Please send your code now' : '✅ Отправь свой код сейчас';
+      return ctx.reply(msg, { parse_mode: 'Markdown' });
+    }
+    
     await ctx.reply(MESSAGES.donateCodesPrompt(user?.language || 'ru'), {
       parse_mode: 'Markdown'
     });
@@ -194,6 +227,13 @@ export function registerCallbacks(bot) {
     const user = await DB.getUser(userId);
     
     const MESSAGES = getMessages(user?.language || 'ru');
+    
+    // SHADOW BAN для возврата неиспользованных
+    if (user?.is_banned) {
+      console.log(`[SHADOW BAN] Banned user @${user.username} clicked return_unused`);
+      const msg = user.language === 'en' ? '✅ Please send the code now' : '✅ Отправь код сейчас';
+      return ctx.reply(msg, { parse_mode: 'Markdown' });
+    }
     
     if (!user || user.status !== 'received') {
       const msg = user?.language === 'en' 

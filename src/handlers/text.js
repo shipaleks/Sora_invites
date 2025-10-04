@@ -90,12 +90,21 @@ async function handleCodeSubmission(ctx, user) {
   
   const MESSAGES = getMessages(user.language || 'ru');
   
-  // Проверка на бан
+  // SHADOW BAN: игнорируем забаненных, но ведём себя нормально
   if (user.is_banned) {
-    return ctx.reply(
-      `🚫 Ты заблокирован за отправку недействительных кодов.\n\nПричина: ${user.ban_reason || 'Нарушение правил'}`,
-      { parse_mode: 'Markdown' }
-    );
+    // Имитируем успешный ответ
+    await ctx.reply('✅ ' + (user.language === 'en' ? 'Code received! Processing...' : 'Код получен! Обрабатываем...'), {
+      parse_mode: 'Markdown'
+    });
+    
+    // Через 2 секунды отправляем "успешное" сообщение
+    setTimeout(async () => {
+      await ctx.reply('✅ ' + (user.language === 'en' ? 'Thank you! Code added to pool.' : 'Спасибо! Код добавлен в пул.'));
+    }, 2000);
+    
+    // Но ничего не записываем в БД
+    console.log(`[SHADOW BAN] User @${user.username} tried to submit code (banned)`);
+    return;
   }
   
   // Проверка: были ли жалобы на коды этого пользователя
@@ -165,6 +174,20 @@ async function handleDonation(ctx, user) {
   
   const MESSAGES = getMessages(user.language || 'ru');
   
+  // SHADOW BAN для пожертвований
+  if (user.is_banned) {
+    await ctx.reply('✅ ' + (user.language === 'en' ? 'Code received! Processing...' : 'Код получен! Обрабатываем...'));
+    setTimeout(async () => {
+      await ctx.reply('💝 ' + (user.language === 'en' ? 'Thank you for donation!' : 'Спасибо за пожертвование!'));
+    }, 2000);
+    console.log(`[SHADOW BAN] User @${user.username} tried to donate (banned)`);
+    await DB.updateUser(user.telegram_id, {
+      awaiting_donation: false,
+      awaiting_donation_usage: false
+    });
+    return;
+  }
+  
   if (codes.length === 0) {
     return ctx.reply('❌ Не найден код.', { parse_mode: 'Markdown' });
   }
@@ -203,6 +226,19 @@ async function handleUnusedReturn(ctx, user) {
   const codes = extractCodes(text);
   
   const MESSAGES = getMessages(user.language || 'ru');
+  
+  // SHADOW BAN для возврата неиспользованных
+  if (user.is_banned) {
+    await ctx.reply('✅ ' + (user.language === 'en' ? 'Code received! Processing...' : 'Код получен! Обрабатываем...'));
+    setTimeout(async () => {
+      await ctx.reply('✅ ' + (user.language === 'en' ? 'Code returned to pool!' : 'Код возвращён в пул!'));
+    }, 2000);
+    console.log(`[SHADOW BAN] User @${user.username} tried to return unused (banned)`);
+    await DB.updateUser(user.telegram_id, {
+      awaiting_unused_return: false
+    });
+    return;
+  }
   
   if (codes.length === 0) {
     return ctx.reply('❌ Не найден код.', { parse_mode: 'Markdown' });
