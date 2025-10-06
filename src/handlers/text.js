@@ -717,6 +717,26 @@ async function handleAdminStat(ctx) {
     // ========== ЗАБАНЕННЫЕ ==========
     const bannedUsers = allUsers.filter(u => u.is_banned);
     
+    // Баны по дням (последние 7 дней)
+    const bansByDay = {};
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      const dayKey = date.toISOString().split('T')[0];
+      bansByDay[dayKey] = 0;
+    }
+    
+    bannedUsers.forEach(u => {
+      if (u.ban_reason && u.ban_reason.includes('Автобан')) {
+        // Пытаемся определить дату бана (используем примерную дату из причины или текущую)
+        // Для более точного отслеживания нужно добавить поле banned_at
+        const dayKey = new Date().toISOString().split('T')[0];
+        if (bansByDay[dayKey] !== undefined) {
+          bansByDay[dayKey]++;
+        }
+      }
+    });
+    
     // ========== ЯЗЫКИ ==========
     const ruUsers = allUsers.filter(u => u.language === 'ru').length;
     const enUsers = allUsers.filter(u => u.language === 'en').length;
@@ -750,8 +770,13 @@ ${avgWaitHours ? `Всего данных: ${usersWithWaitTime.length}` : ''}
 **Всего поделились: ${totalShared} из ${receivedInvites} (${Math.round(totalShared / Math.max(receivedInvites, 1) * 100)}%)**
 
 **🔨 Модерация:**
-Забанено: ${bannedUsers.length}
-${bannedUsers.length > 0 ? bannedUsers.slice(0, 5).map(u => `• @${u.username.replace(/_/g, '\\_')}: ${u.ban_reason}`).join('\n') : ''}`;
+Забанено всего: ${bannedUsers.length}
+Автобанов: ${bannedUsers.filter(u => u.ban_reason?.includes('Автобан')).length}
+Ручных банов: ${bannedUsers.filter(u => !u.ban_reason?.includes('Автобан')).length}
+
+⚠️ **ГИПОТЕЗА: Shadow ban влияет на статистику?**
+Забаненные "отправляют" коды, но коды не попадают в базу!
+${bannedUsers.length > 0 ? '\n**Последние баны:**\n' + bannedUsers.slice(0, 3).map(u => `• @${u.username.replace(/_/g, '\\_')}: ${u.ban_reason}`).join('\n') : ''}`;
 
     await ctx.reply(stat, { parse_mode: 'Markdown' });
     
