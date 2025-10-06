@@ -641,166 +641,197 @@ async function handleAdminStat(ctx) {
     const allUsers = await DB.getAllUsers();
     const poolSize = await DB.getPoolSize();
     const queueSize = await DB.getQueueSize();
-    const settings = await DB.getSystemSettings();
     
-    // Основная статистика
+    // ========== ОСНОВНАЯ СТАТИСТИКА ==========
     const totalUsers = allUsers.length;
     const receivedInvites = allUsers.filter(u => u.status === 'received' || u.status === 'completed').length;
     const returnedCodes = allUsers.filter(u => u.codes_returned > 0).length;
-    const notReturned = receivedInvites - returnedCodes;
     const returnRate = receivedInvites > 0 ? Math.round((returnedCodes / receivedInvites) * 100) : 0;
     
-    // Топ донатеры (по количеству использований)
-    const donors = allUsers
-      .filter(u => u.usage_count_shared > 0)
-      .sort((a, b) => (b.usage_count_shared || 0) - (a.usage_count_shared || 0))
-      .slice(0, 5);
+    // ========== КОНВЕРСИЯ ==========
+    const usersWhoShared = allUsers.filter(u => u.usage_count_shared > 0).length;
+    const shareRate = receivedInvites > 0 ? Math.round((usersWhoShared / receivedInvites) * 100) : 0;
     
-    // Проблемные коды с авторами
-    const admin = await import('firebase-admin');
-    const db = admin.default.firestore();
+    // ========== ВРЕМЯ ОЖИДАНИЯ ==========
+    const avgWaitHours = await DB.getAverageWaitTimeHours();
+    const usersWithWaitTime = allUsers.filter(u => 
+      u.invite_sent_at && u.joined_queue_at
+    );
     
-    const allReportedCodes = [];
-    allUsers.forEach(u => {
-      if (u.invalid_codes_reported && u.invalid_codes_reported.length > 0) {
-        u.invalid_codes_reported.forEach(code => {
-          const existing = allReportedCodes.find(r => r.code === code);
-          if (existing) {
-            existing.count++;
-          } else {
-            allReportedCodes.push({ code, count: 1, reporters: [] });
-          }
-        });
+    // Группируем по часам ожидания для гистограммы
+    const waitTimesByHour = {};
+    usersWithWaitTime.forEach(u => {
+      const joinedAt = u.joined_queue_at?.toDate?.() || new Date(u.joined_queue_at);
+      const sentAt = u.invite_sent_at?.toDate?.() || new Date(u.invite_sent_at);
+      const waitHours = Math.round((sentAt - joinedAt) / (1000 * 60 * 60));
+      
+      if (waitHours >= 0 && waitHours <= 48) { // Ограничиваем 48 часами
+        waitTimesByHour[waitHours] = (waitTimesByHour[waitHours] || 0) + 1;
       }
     });
     
-    // Находим авторов проблемных кодов
-    for (const reported of allReportedCodes) {
-      const poolEntry = await db.collection('invite_pool')
-        .where('code', '==', reported.code)
-        .limit(1)
-        .get();
-      
-      if (!poolEntry.empty) {
-        const authorId = poolEntry.docs[0].data().submitted_by;
-        
-        if (authorId.includes('donation:')) {
-          const userId = authorId.replace('donation:', '');
-          const author = await DB.getUser(userId);
-          reported.author = author ? `@${author.username}` : 'Unknown';
-        } else if (authorId === 'admin') {
-          reported.author = 'Admin';
-        } else {
-          const author = await DB.getUser(authorId);
-          reported.author = author ? `@${author.username}` : authorId;
-        }
-      } else {
-        reported.author = 'Unknown';
-      }
+    // ========== АКТИВНОСТЬ ПОСЛЕДНИХ 7 ДНЕЙ ==========
+    const now = new Date();
+    const last7DaysActivity = {};
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      const dayKey = date.toISOString().split('T')[0];
+      last7DaysActivity[dayKey] = { invites: 0, returns: 0 };
     }
     
-    const topReported = allReportedCodes
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
+    allUsers.forEach(u => {
+      // Инвайты
+      if (u.invite_sent_at) {
+        const date = u.invite_sent_at.toDate ? u.invite_sent_at.toDate() : new Date(u.invite_sent_at);
+        const dayKey = date.toISOString().split('T')[0];
+        if (last7DaysActivity[dayKey]) {
+          last7DaysActivity[dayKey].invites++;
+        }
+      }
+      
+      // Возвраты (используем последнее обновление как прокси)
+      if (u.codes_returned > 0 && u.requested_at) {
+        const date = u.requested_at.toDate ? u.requested_at.toDate() : new Date(u.requested_at);
+        const dayKey = date.toISOString().split('T')[0];
+        if (last7DaysActivity[dayKey]) {
+          last7DaysActivity[dayKey].returns++;
+        }
+      }
+    });
     
-    // Забаненные пользователи
-    const bannedUsers = allUsers.filter(u => u.is_banned);
-    
-    // Статистика по языкам
-    const ruUsers = allUsers.filter(u => u.language === 'ru').length;
-    const enUsers = allUsers.filter(u => u.language === 'en').length;
-    
-    // Распределение по количеству использований
+    // ========== РАСПРЕДЕЛЕНИЕ ПО ИСПОЛЬЗОВАНИЯМ ==========
     const usageDistribution = {
-      1: allUsers.filter(u => u.usage_count_shared === 1).length,
       2: allUsers.filter(u => u.usage_count_shared === 2).length,
       3: allUsers.filter(u => u.usage_count_shared === 3).length,
       4: allUsers.filter(u => u.usage_count_shared === 4).length
     };
     
-    const totalShared = Object.values(usageDistribution).reduce((a, b) => a + b, 0);
+    // ========== ЗАБАНЕННЫЕ ==========
+    const bannedUsers = allUsers.filter(u => u.is_banned);
     
-    // График динамики (последние 7 дней)
-    const invitesByDay = {};
-    allUsers.forEach(u => {
-      if (u.invite_sent_at) {
-        const date = u.invite_sent_at.toDate ? u.invite_sent_at.toDate() : new Date(u.invite_sent_at);
-        const dayKey = date.toISOString().split('T')[0];
-        invitesByDay[dayKey] = (invitesByDay[dayKey] || 0) + 1;
-      }
-    });
+    // ========== ЯЗЫКИ ==========
+    const ruUsers = allUsers.filter(u => u.language === 'ru').length;
+    const enUsers = allUsers.filter(u => u.language === 'en').length;
     
-    const sortedDays = Object.keys(invitesByDay).sort();
-    const last7Days = sortedDays.slice(-7);
-    const inviteCounts = last7Days.map(day => invitesByDay[day]);
+    // ========== ТЕКСТОВАЯ СТАТИСТИКА ==========
+    const stat = `📊 **АДМИН СТАТИСТИКА**
+
+**👥 Пользователи:**
+Всего: ${totalUsers}
+🇷🇺 Русский: ${ruUsers} | 🇬🇧 English: ${enUsers}
+
+**⚡️ Эффективность системы:**
+Получили инвайт: ${receivedInvites}
+Вернули код: ${returnedCodes} (${returnRate}%)
+Поделились с другими: ${usersWhoShared} (${shareRate}%)
+
+**⏱ Время ожидания:**
+Среднее: ${avgWaitHours ? `${Math.round(avgWaitHours)} ч` : 'нет данных'}
+Пользователей с данными: ${usersWithWaitTime.length}
+
+**💎 Сейчас:**
+Кодов в пуле: ${poolSize}
+В очереди: ${queueSize}
+Баланс: ${poolSize >= queueSize ? '✅ Хорошо' : '⚠️ Нужны коды'}
+
+**📊 Щедрость (кто сколько раздал):**
+2 человека: ${usageDistribution[2]} чел
+3 человека: ${usageDistribution[3]} чел
+4 человека: ${usageDistribution[4]} чел ⚔️
+
+**🔨 Модерация:**
+Забанено: ${bannedUsers.length}
+${bannedUsers.length > 0 ? bannedUsers.slice(0, 5).map(u => `• @${u.username.replace(/_/g, '\\_')}: ${u.ban_reason}`).join('\n') : ''}`;
+
+    await ctx.reply(stat, { parse_mode: 'Markdown' });
     
-    // Генерируем URL для графика через QuickChart
-    const chartData = {
+    // ========== ГРАФИК 1: ВРЕМЯ ОЖИДАНИЯ (ГИСТОГРАММА) ==========
+    if (Object.keys(waitTimesByHour).length > 0) {
+      const sortedHours = Object.keys(waitTimesByHour).map(Number).sort((a, b) => a - b);
+      const waitCounts = sortedHours.map(h => waitTimesByHour[h]);
+      
+      const waitTimeChart = {
+        type: 'bar',
+        data: {
+          labels: sortedHours.map(h => `${h}ч`),
+          datasets: [{
+            label: 'Количество пользователей',
+            data: waitCounts,
+            backgroundColor: 'rgba(54, 162, 235, 0.8)'
+          }]
+        },
+        options: {
+          title: {
+            display: true,
+            text: 'Распределение времени ожидания',
+            fontSize: 16
+          },
+          scales: {
+            yAxes: [{
+              ticks: {
+                beginAtZero: true,
+                stepSize: 1
+              }
+            }]
+          }
+        }
+      };
+      
+      const waitChartUrl = `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify(waitTimeChart))}&width=800&height=400`;
+      
+      await ctx.replyWithPhoto({ url: waitChartUrl }, {
+        caption: `⏱ **График времени ожидания**\n\nСреднее: ${Math.round(avgWaitHours || 0)} ч\nВсего данных: ${usersWithWaitTime.length}`
+      });
+    }
+    
+    // ========== ГРАФИК 2: АКТИВНОСТЬ ЗА 7 ДНЕЙ ==========
+    const activityDays = Object.keys(last7DaysActivity).sort();
+    const invitesData = activityDays.map(day => last7DaysActivity[day].invites);
+    const returnsData = activityDays.map(day => last7DaysActivity[day].returns);
+    
+    const activityChart = {
       type: 'line',
       data: {
-        labels: last7Days.map(d => d.substring(5)), // MM-DD
-        datasets: [{
-          label: 'Invites Sent',
-          data: inviteCounts,
-          borderColor: 'rgb(75, 192, 192)',
-          tension: 0.1
-        }]
+        labels: activityDays.map(d => d.substring(5)), // MM-DD
+        datasets: [
+          {
+            label: 'Отправлено инвайтов',
+            data: invitesData,
+            borderColor: 'rgb(75, 192, 192)',
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            tension: 0.3
+          },
+          {
+            label: 'Возвращено кодов',
+            data: returnsData,
+            borderColor: 'rgb(255, 99, 132)',
+            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            tension: 0.3
+          }
+        ]
       },
       options: {
         title: {
           display: true,
-          text: 'Invites Sent - Last 7 Days'
+          text: 'Активность за последние 7 дней',
+          fontSize: 16
+        },
+        scales: {
+          yAxes: [{
+            ticks: {
+              beginAtZero: true
+            }
+          }]
         }
       }
     };
     
-    const chartUrl = `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify(chartData))}`;
+    const activityChartUrl = `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify(activityChart))}&width=800&height=400`;
     
-    const stat = `📊 **ДЕТАЛЬНАЯ СТАТИСТИКА**
-
-**🎯 Основное:**
-Всего пользователей: ${totalUsers}
-Получили инвайты: ${receivedInvites}
-Вернули коды: ${returnedCodes} (${returnRate}%)
-Не вернули: ${notReturned}
-
-**💎 Пул и очередь:**
-Кодов в пуле: ${poolSize}
-В очереди: ${queueSize}
-Соотношение: ${poolSize > 0 ? (poolSize / Math.max(queueSize, 1)).toFixed(2) : '0'}
-
-**🌍 Языки:**
-🇷🇺 Русский: ${ruUsers}
-🇬🇧 English: ${enUsers}
-
-**📊 Распределение по использованиям:**
-Поделились 1 использованием: ${usageDistribution[1]} чел
-Поделились 2 использованиями: ${usageDistribution[2]} чел
-Поделились 3 использованиями: ${usageDistribution[3]} чел
-Поделились 4 использованиями: ${usageDistribution[4]} чел (герои! ⚔️)
-Всего поделились: ${totalShared} из ${receivedInvites}
-
-**🏆 Топ-5 донатеров:**
-${donors.length > 0 ? donors.map((u, i) => 
-  `${i + 1}. @${u.username.replace(/_/g, '\\_')}: ${u.usage_count_shared} использований`
-).join('\n') : 'Нет данных'}
-
-**🚫 Проблемные коды:**
-${topReported.length > 0 ? topReported.map(r => 
-  `\`${r.code}\` от ${r.author} - ${r.count} ${r.count === 1 ? 'жалоба' : 'жалоб'}`
-).join('\n') : 'Нет жалоб'}
-
-**🔨 Забанено: ${bannedUsers.length}**
-${bannedUsers.length > 0 ? bannedUsers.map(u => `@${u.username.replace(/_/g, '\\_')}: ${u.ban_reason}`).join('\n') : ''}`;
-
-    await ctx.reply(stat, { parse_mode: 'Markdown' });
-    
-    // Отправляем график
-    if (last7Days.length > 0) {
-      await ctx.replyWithPhoto({ url: chartUrl }, {
-        caption: '📈 Динамика отправки инвайтов за последние 7 дней'
-      });
-    }
+    await ctx.replyWithPhoto({ url: activityChartUrl }, {
+      caption: '📈 **Динамика системы за неделю**'
+    });
     
   } catch (error) {
     console.error('Error generating admin stats:', error);
