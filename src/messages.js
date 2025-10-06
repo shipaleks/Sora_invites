@@ -241,8 +241,7 @@ ${poolSize > queueSize
       wantInvite: '🎫 Хочу инвайт',
       agree: '✅ Понятно, согласен',
       cancel: '❌ Отказаться',
-      submitCodes: '📨 Отправить коды',
-      donateCodes: '💝 Пожертвовать коды',
+      shareCode: '📤 Поделиться кодом',
       returnUnused: '↩️ Вернуть неиспользованный инвайт',
       reportInvalid: '🚫 Нерабочий инвайт',
       russian: '🇷🇺 Русский',
@@ -256,25 +255,25 @@ ${poolSize > queueSize
       rohanAnswers: '⚔️ И РОХАН ЯВИТСЯ!'
     },
 
-    donateCodesPrompt: (language) => language === 'en' 
-      ? `💝 **Donate Code**
+    shareCodePrompt: (language) => language === 'en' 
+      ? `📤 **Share your code**
 
 **Where to find code:**
 → Web: ⋮ → Invite Friends
 → App: "4 invites" → Share
 
-Send code → choose how many uses to share.
+Send your invite code → choose how many uses to share.
 
-Thanks! 🙏`
-      : `💝 **Пожертвовать код**
+Thank you for helping others! 🙏`
+      : `📤 **Поделись кодом**
 
 **Где взять код:**
 → Веб: ⋮ → Invite Friends
 → Приложение: "4 invites" → Share
 
-Отправь код → выберешь сколько использований поделиться.
+Отправь свой инвайт-код → выберешь сколько использований поделиться.
 
-Спасибо! 🙏`,
+Спасибо, что помогаешь другим! 🙏`,
 
     donationReceived: (count, language) => language === 'en'
       ? `✅ **Thank you!**
@@ -685,8 +684,7 @@ Head of Research at Yandex Search & AI`,
       wantInvite: '🎫 Want Invite',
       agree: '✅ I Agree',
       cancel: '❌ Cancel',
-      submitCodes: '📨 Submit Codes',
-      donateCodes: '💝 Donate Codes',
+      shareCode: '📤 Share Code',
       returnUnused: '↩️ Return Unused Invite',
       reportInvalid: '🚫 Invalid Invite',
       russian: '🇷🇺 Русский',

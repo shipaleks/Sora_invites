@@ -17,13 +17,13 @@ export function registerCommands(bot) {
     // SHADOW BAN: показываем интерфейс, но ограничиваем
     if (user.is_banned) {
       console.log(`[SHADOW BAN] Banned user @${user.username} accessed /start`);
-      // Показываем обычное приветствие
+      // Показываем обычное приветствие для забаненных
       const MESSAGES = getMessages(user.language || 'ru');
       return ctx.reply(MESSAGES.welcome, {
         reply_markup: {
           inline_keyboard: [
-            [{ text: MESSAGES.buttons.wantInvite, callback_data: 'want_invite' }],
-            [{ text: MESSAGES.buttons.donateCodes, callback_data: 'donate_codes' }]
+            [{ text: MESSAGES.buttons.shareCode, callback_data: 'share_code' }],
+            [{ text: MESSAGES.buttons.wantInvite, callback_data: 'want_invite' }]
           ]
         },
         parse_mode: 'Markdown'
@@ -45,26 +45,26 @@ export function registerCommands(bot) {
     
     const MESSAGES = getMessages(user.language);
     
-    // Если пользователь уже получил инвайт, показываем дополнительные кнопки
+    // Если пользователь уже получил инвайт, ПРИОРИТЕТ - поделиться кодом!
     if (user.status === 'received') {
       await ctx.reply(MESSAGES.welcome, {
         reply_markup: {
           inline_keyboard: [
-            [{ text: MESSAGES.buttons.wantInvite, callback_data: 'want_invite' }],
-            [{ text: MESSAGES.buttons.submitCodes, callback_data: 'submit_codes' }],
+            [{ text: MESSAGES.buttons.shareCode, callback_data: 'share_code' }],
             [{ text: MESSAGES.buttons.returnUnused, callback_data: 'return_unused' }],
             [{ text: MESSAGES.buttons.reportInvalid, callback_data: 'report_invalid' }],
-            [{ text: MESSAGES.buttons.donateCodes, callback_data: 'donate_codes' }]
+            [{ text: MESSAGES.buttons.wantInvite, callback_data: 'want_invite' }]
           ]
         },
         parse_mode: 'Markdown'
       });
     } else {
+      // Для всех остальных: поделиться или запросить
       await ctx.reply(MESSAGES.welcome, {
         reply_markup: {
           inline_keyboard: [
-            [{ text: MESSAGES.buttons.wantInvite, callback_data: 'want_invite' }],
-            [{ text: MESSAGES.buttons.donateCodes, callback_data: 'donate_codes' }]
+            [{ text: MESSAGES.buttons.shareCode, callback_data: 'share_code' }],
+            [{ text: MESSAGES.buttons.wantInvite, callback_data: 'want_invite' }]
           ]
         },
         parse_mode: 'Markdown'

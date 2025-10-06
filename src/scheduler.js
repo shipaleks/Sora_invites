@@ -87,7 +87,7 @@ function startReminderScheduler(bot) {
                 parse_mode: 'Markdown',
                 reply_markup: {
                   inline_keyboard: [[
-                    { text: MESSAGES.buttons.submitCodes, callback_data: 'submit_codes' }
+                    { text: MESSAGES.buttons.shareCode, callback_data: 'share_code' }
                   ]]
                 }
               });
@@ -251,7 +251,7 @@ async function processNextInvite(bot, userId, codeObj) {
         parse_mode: 'Markdown',
         reply_markup: {
           inline_keyboard: [
-            [{ text: MESSAGES.buttons.submitCodes, callback_data: 'submit_codes' }],
+            [{ text: MESSAGES.buttons.shareCode, callback_data: 'share_code' }],
             [{ text: MESSAGES.buttons.reportInvalid, callback_data: 'report_invalid' }]
           ]
         }
@@ -320,7 +320,7 @@ Please donate more invite uses if you can.`
           parse_mode: 'Markdown',
           reply_markup: {
             inline_keyboard: [[
-              { text: MESSAGES.buttons.donateCodes, callback_data: 'donate_codes' }
+              { text: MESSAGES.buttons.shareCode, callback_data: 'share_code' }
             ]]
           }
         });

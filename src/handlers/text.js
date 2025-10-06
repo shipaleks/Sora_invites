@@ -65,26 +65,29 @@ export function registerTextHandlers(bot) {
       return ctx.reply(MESSAGES.notInSystem, { parse_mode: 'Markdown' });
     }
     
-    // УПРОЩЁННАЯ ЛОГИКА: только 3 типа обработки
+    // УПРОЩЁННАЯ ЛОГИКА: 3 типа обработки + защита от двойной отправки
     
     // 1. Возврат неиспользованного (только если флаг установлен)
     if (user.awaiting_unused_return === true) {
       return handleUnusedReturn(ctx, user);
     }
     
-    // 2. Пожертвование (только если флаг установлен)
-    if (user.awaiting_donation === true || user.awaiting_donation_usage === true) {
-      return handleDonation(ctx, user);
+    // 2. Ожидание выбора количества использований (КРИТИЧЕСКАЯ ЗАЩИТА!)
+    if (user.awaiting_usage_choice === true || user.awaiting_donation_usage === true) {
+      const msg = user.language === 'en' 
+        ? '⏳ Please choose how many uses to share by clicking a button above ⬆️' 
+        : '⏳ Пожалуйста, выбери количество использований, нажав на кнопку выше ⬆️';
+      return ctx.reply(msg);
     }
     
-    // 3. Обычный возврат кодов (если получил инвайт и ещё не вернул)
-    if (user.status === 'received' && user.codes_returned === 0) {
-      return handleCodeSubmission(ctx, user);
+    // 3. Поделиться кодом (универсальная обработка)
+    if (user.awaiting_share === true) {
+      return handleCodeSharing(ctx, user);
     }
   });
 }
 
-async function handleCodeSubmission(ctx, user) {
+async function handleCodeSharing(ctx, user) {
   const text = ctx.message.text;
   const codes = extractCodes(text);
   
@@ -145,7 +148,7 @@ async function handleCodeSubmission(ctx, user) {
     await DB.updateUser(user.telegram_id, {
       pending_code: code,
       awaiting_usage_choice: true,
-      awaiting_codes: false // Сбрасываем флаг
+      awaiting_share: false // Сбрасываем флаг
     });
     
     // Получаем актуальные данные для мотивации

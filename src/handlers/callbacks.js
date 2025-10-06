@@ -133,8 +133,8 @@ export function registerCallbacks(bot) {
     }
   });
 
-  // Отправить коды
-  bot.action('submit_codes', async (ctx) => {
+  // Поделиться кодом (объединённая функция)
+  bot.action('share_code', async (ctx) => {
     await ctx.answerCbQuery();
     
     const userId = ctx.from.id;
@@ -142,81 +142,26 @@ export function registerCallbacks(bot) {
     
     const MESSAGES = getMessages(user?.language || 'ru');
     
-    // SHADOW BAN для отправки кодов
+    // SHADOW BAN
     if (user?.is_banned) {
-      console.log(`[SHADOW BAN] Banned user @${user.username} clicked submit_codes`);
+      console.log(`[SHADOW BAN] Banned user @${user.username} clicked share_code`);
       const msg = user.language === 'en' ? '✅ Please send your code now' : '✅ Отправь свой код сейчас';
       return ctx.reply(msg, { parse_mode: 'Markdown' });
     }
     
-    if (!user || user.status !== 'received') {
-      const msg = user?.language === 'en' ? '❌ You haven\'t received an invite yet' : '❌ Ты ещё не получил инвайт';
-      return ctx.reply(msg, { parse_mode: 'Markdown' });
-    }
-    
-    // Определяем сколько кодов нужно
-    const settings = await DB.getSystemSettings();
-    
-    // Находим индекс пользователя среди получивших инвайт
-    const allUsers = await DB.getAllUsers();
-    const usersWithInvites = allUsers
-      .filter(u => u.invite_sent_at)
-      .sort((a, b) => {
-        const timeA = a.invite_sent_at?.toDate?.() || new Date(0);
-        const timeB = b.invite_sent_at?.toDate?.() || new Date(0);
-        return timeA - timeB;
-      });
-    
-    const userIndex = usersWithInvites.findIndex(u => u.telegram_id === String(userId)) + 1;
-    const codesRequired = userIndex <= 10 ? 
-      config.rules.first10CodesRequired : 
-      config.rules.regularCodesRequired;
-    
-    const neededCodes = Math.max(0, codesRequired - user.codes_returned);
-    
-    if (neededCodes === 0) {
-      const msg = user.language === 'en' 
-        ? '✅ You\'ve already returned all required codes. Thank you! 🙏' 
-        : '✅ Ты уже вернул все необходимые коды. Спасибо! 🙏';
-      return ctx.reply(msg, { parse_mode: 'Markdown' });
-    }
-    
-    await ctx.reply(MESSAGES.waitingForCodes(codesRequired, user.codes_returned || 0), {
+    // Универсальный промпт для всех
+    await ctx.reply(MESSAGES.shareCodePrompt(user?.language || 'ru'), {
       parse_mode: 'Markdown'
     });
     
-    // Устанавливаем флаг ожидания кодов и СБРАСЫВАЕМ остальные
+    // Устанавливаем флаг ожидания кода и СБРАСЫВАЕМ остальные
     await DB.updateUser(userId, {
-      awaiting_codes: true,
+      awaiting_share: true,
+      awaiting_codes: false,
       awaiting_donation: false,
       awaiting_unused_return: false,
-      awaiting_donation_usage: false
-    });
-  });
-
-  // Пожертвовать коды
-  bot.action('donate_codes', async (ctx) => {
-    await ctx.answerCbQuery();
-    
-    const userId = ctx.from.id;
-    const user = await DB.getUser(userId);
-    
-    const MESSAGES = getMessages(user?.language || 'ru');
-    
-    // SHADOW BAN для пожертвований
-    if (user?.is_banned) {
-      console.log(`[SHADOW BAN] Banned user @${user.username} clicked donate_codes`);
-      const msg = user.language === 'en' ? '✅ Please send your code now' : '✅ Отправь свой код сейчас';
-      return ctx.reply(msg, { parse_mode: 'Markdown' });
-    }
-    
-    await ctx.reply(MESSAGES.donateCodesPrompt(user?.language || 'ru'), {
-      parse_mode: 'Markdown'
-    });
-    
-    // Устанавливаем флаг ожидания донейшен кодов
-    await DB.updateUser(userId, {
-      awaiting_donation: true
+      awaiting_donation_usage: false,
+      awaiting_usage_choice: false
     });
   });
 
