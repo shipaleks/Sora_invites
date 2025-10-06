@@ -31,11 +31,15 @@ const MESSAGES = {
 
 \`${code}\`
 
+⚠️ **ВАЖНО: используй этот код ТОЛЬКО 1 РАЗ для регистрации!**
+
+Если ты используешь его несколько раз (для себя и друзей), то не вернёшь достаточно кодов обратно, и цепочка замирает. Другие люди не получат инвайты из-за этого.
+
 **Что делать:**
 1. Включи VPN 🇺🇸
-2. Зарегистрируйся на sora.com
-3. В Sora появится твой код (один, на 4 использования)
-4. Скопируй его и отправь сюда
+2. Зарегистрируйся на sora.com **с этим кодом**
+3. В Sora появится **ТВОЙ код** (один, на 4 использования)
+4. Скопируй **ТВОЙ код из Sora** и отправь сюда
 
 **Где найти код в Sora:**
 → Веб: правый угол ⋮ → Invite Friends
@@ -475,11 +479,15 @@ Agree?`,
 
 \`${code}\`
 
+⚠️ **IMPORTANT: use this code ONLY ONCE for registration!**
+
+If you use it multiple times (for yourself and friends), you won't return enough codes back, and the chain stops. Other people won't get invites because of this.
+
 **What to do:**
 1. Enable VPN 🇺🇸
-2. Register on sora.com
-3. In Sora you'll get your code (one, 4 uses)
-4. Copy it and send here
+2. Register on sora.com **with this code**
+3. In Sora you'll get **YOUR code** (one, 4 uses)
+4. Copy **YOUR code from Sora** and send it here
 
 **Where to find code in Sora:**
 → Web: corner ⋮ → Invite Friends
