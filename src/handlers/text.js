@@ -702,10 +702,13 @@ async function handleAdminStat(ctx) {
     
     // ========== РАСПРЕДЕЛЕНИЕ ПО ИСПОЛЬЗОВАНИЯМ ==========
     const usageDistribution = {
+      1: allUsers.filter(u => u.usage_count_shared === 1).length,
       2: allUsers.filter(u => u.usage_count_shared === 2).length,
       3: allUsers.filter(u => u.usage_count_shared === 3).length,
       4: allUsers.filter(u => u.usage_count_shared === 4).length
     };
+    
+    const totalShared = Object.values(usageDistribution).reduce((a, b) => a + b, 0);
     
     // ========== ЗАБАНЕННЫЕ ==========
     const bannedUsers = allUsers.filter(u => u.is_banned);
@@ -727,8 +730,8 @@ async function handleAdminStat(ctx) {
 Поделились с другими: ${usersWhoShared} (${shareRate}%)
 
 **⏱ Время ожидания:**
-Среднее: ${avgWaitHours ? `${Math.round(avgWaitHours)} ч` : 'нет данных'}
-Пользователей с данными: ${usersWithWaitTime.length}
+${avgWaitHours ? `Среднее: ${Math.round(avgWaitHours)} ч` : 'Нет данных (новая функция, накапливается)'}
+${avgWaitHours ? `Пользователей с данными: ${usersWithWaitTime.length}` : ''}
 
 **💎 Сейчас:**
 Кодов в пуле: ${poolSize}
@@ -736,9 +739,11 @@ async function handleAdminStat(ctx) {
 Баланс: ${poolSize >= queueSize ? '✅ Хорошо' : '⚠️ Нужны коды'}
 
 **📊 Щедрость (кто сколько раздал):**
+1 человек: ${usageDistribution[1]} чел (минимум)
 2 человека: ${usageDistribution[2]} чел
-3 человека: ${usageDistribution[3]} чел
-4 человека: ${usageDistribution[4]} чел ⚔️
+3 человека: ${usageDistribution[3]} чел 
+4 человека: ${usageDistribution[4]} чел ⚔️ (максимум)
+**Всего поделились: ${totalShared} из ${receivedInvites} (${Math.round(totalShared / Math.max(receivedInvites, 1) * 100)}%)**
 
 **🔨 Модерация:**
 Забанено: ${bannedUsers.length}
