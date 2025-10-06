@@ -111,9 +111,12 @@ export const DB = {
     try {
       const allUsers = await this.getAllUsers();
       
-      // Берём только тех, кто получил инвайт в последние 72 часа и у кого есть joined_queue_at
+      // Берём только тех, кто получил инвайт в последние 72 часа
       const recentUsers = allUsers.filter(u => {
-        if (!u.invite_sent_at || !u.joined_queue_at) return false;
+        if (!u.invite_sent_at) return false;
+        
+        // Нужен либо joined_queue_at либо requested_at
+        if (!u.joined_queue_at && !u.requested_at) return false;
         
         const inviteTime = u.invite_sent_at?.toDate?.() || new Date(u.invite_sent_at);
         const now = new Date();
@@ -128,7 +131,11 @@ export const DB = {
       
       // Считаем время ожидания для каждого
       const waitTimes = recentUsers.map(u => {
-        const joinedAt = u.joined_queue_at?.toDate?.() || new Date(u.joined_queue_at);
+        // Используем joined_queue_at если есть, иначе requested_at (для старых пользователей)
+        const joinedAt = u.joined_queue_at 
+          ? (u.joined_queue_at?.toDate?.() || new Date(u.joined_queue_at))
+          : (u.requested_at?.toDate?.() || new Date(u.requested_at));
+        
         const sentAt = u.invite_sent_at?.toDate?.() || new Date(u.invite_sent_at);
         const waitHours = (sentAt - joinedAt) / (1000 * 60 * 60);
         return waitHours > 0 ? waitHours : 0;

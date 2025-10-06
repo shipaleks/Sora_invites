@@ -655,13 +655,17 @@ async function handleAdminStat(ctx) {
     // ========== ВРЕМЯ ОЖИДАНИЯ ==========
     const avgWaitHours = await DB.getAverageWaitTimeHours();
     const usersWithWaitTime = allUsers.filter(u => 
-      u.invite_sent_at && u.joined_queue_at
+      u.invite_sent_at && (u.joined_queue_at || u.requested_at)
     );
     
     // Группируем по часам ожидания для гистограммы
     const waitTimesByHour = {};
     usersWithWaitTime.forEach(u => {
-      const joinedAt = u.joined_queue_at?.toDate?.() || new Date(u.joined_queue_at);
+      // Используем joined_queue_at если есть, иначе requested_at (для старых пользователей)
+      const joinedAt = u.joined_queue_at 
+        ? (u.joined_queue_at?.toDate?.() || new Date(u.joined_queue_at))
+        : (u.requested_at?.toDate?.() || new Date(u.requested_at));
+      
       const sentAt = u.invite_sent_at?.toDate?.() || new Date(u.invite_sent_at);
       const waitHours = Math.round((sentAt - joinedAt) / (1000 * 60 * 60));
       
@@ -730,8 +734,8 @@ async function handleAdminStat(ctx) {
 Поделились с другими: ${usersWhoShared} (${shareRate}%)
 
 **⏱ Время ожидания:**
-${avgWaitHours ? `Среднее: ${Math.round(avgWaitHours)} ч` : 'Нет данных (новая функция, накапливается)'}
-${avgWaitHours ? `Пользователей с данными: ${usersWithWaitTime.length}` : ''}
+${avgWaitHours ? `Среднее: ${Math.round(avgWaitHours)} ч` : 'Нет данных'}
+${avgWaitHours ? `Всего данных: ${usersWithWaitTime.length}` : ''}
 
 **💎 Сейчас:**
 Кодов в пуле: ${poolSize}
