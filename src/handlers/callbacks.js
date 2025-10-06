@@ -364,8 +364,8 @@ export function registerCallbacks(bot) {
             
             console.log(`[COMPLAINTS] Author @${author.username}: ${complaintsCount} unique complaints`);
             
-            // АВТОМАТИЧЕСКИЙ SHADOW BAN после 2 уникальных жалоб
-            if (complaintsCount >= 2 && !author.is_banned) {
+            // АВТОМАТИЧЕСКИЙ SHADOW BAN после 3 уникальных жалоб
+            if (complaintsCount >= 3 && !author.is_banned) {
               await DB.banUser(realAuthorId, `Автобан: ${complaintsCount} жалоб на коды`);
               
               // Удаляем все коды этого автора из пула
