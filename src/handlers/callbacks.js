@@ -418,8 +418,8 @@ export function registerCallbacks(bot) {
             
             console.log(`[COMPLAINTS] Author @${author.username}: ${complaintsCount} unique complaints`);
             
-            // АВТОМАТИЧЕСКИЙ SHADOW BAN после 3 уникальных жалоб
-            if (complaintsCount >= 3 && !author.is_banned) {
+            // АВТОМАТИЧЕСКИЙ SHADOW BAN после 2 уникальных жалоб
+            if (complaintsCount >= 2 && !author.is_banned) {
               await DB.banUser(realAuthorId, `Автобан: ${complaintsCount} жалоб на коды`);
               
               // Удаляем все коды этого автора из пула
@@ -476,8 +476,8 @@ export function registerCallbacks(bot) {
       }
       
       const msg = user?.language === 'en'
-        ? `✅ Report received and processed.\n\n${author?.is_banned ? '🔨 The author has been auto-banned (3+ complaints).\n\n' : ''}You'll get a new invite soon!`
-        : `✅ Жалоба принята и обработана.\n\n${author?.is_banned ? '🔨 Автор автоматически забанен (3+ жалобы).\n\n' : ''}Скоро получишь новый инвайт!`;
+        ? `✅ Report received and processed.\n\n${author?.is_banned ? '🔨 The author has been auto-banned (2+ complaints).\n\n' : ''}You'll get a new invite soon!`
+        : `✅ Жалоба принята и обработана.\n\n${author?.is_banned ? '🔨 Автор автоматически забанен (2+ жалобы).\n\n' : ''}Скоро получишь новый инвайт!`;
       
       await ctx.editMessageText(msg);
       
@@ -489,7 +489,7 @@ export function registerCallbacks(bot) {
         try {
           await bot.telegram.sendMessage(
             config.telegram.adminId,
-            `🚫 Жалоба на код от @${user.username}\nКод: \`${code}\`\nАвтор: @${author.username}\nЖалоб на автора: ${complaintsCount}/3`,
+            `🚫 Жалоба на код от @${user.username}\nКод: \`${code}\`\nАвтор: @${author.username}\nЖалоб на автора: ${complaintsCount}/2`,
             { parse_mode: 'Markdown' }
           );
         } catch (error) {

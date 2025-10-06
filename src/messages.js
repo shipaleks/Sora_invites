@@ -118,16 +118,38 @@ const MESSAGES = {
 /start → "Отправить коды"`;
     },
 
-    addedToQueue: (position, poolSize) => `✅ **Ты добавлен в очередь!**
+    addedToQueue: (position, poolSize) => {
+      // Расчёт примерного времени ожидания
+      let waitTime = '';
+      if (poolSize >= position) {
+        waitTime = '⚡️ **Примерное время ожидания:** несколько минут';
+      } else {
+        const waitingAhead = position - poolSize;
+        if (waitingAhead <= 3) {
+          waitTime = '⏱ **Примерное время ожидания:** 30-90 минут';
+        } else if (waitingAhead <= 6) {
+          waitTime = '⏱ **Примерное время ожидания:** 2-4 часа';
+        } else if (waitingAhead <= 12) {
+          waitTime = '⏱ **Примерное время ожидания:** 4-8 часов';
+        } else {
+          waitTime = '⏱ **Примерное время ожидания:** 8-24 часа';
+        }
+      }
+      
+      return `✅ **Ты добавлен в очередь!**
 
-📊 Твоя позиция: **#${position}**
-💎 Кодов в пуле: **${poolSize}**
+📊 **Твоя позиция:** #${position}
+💎 **Кодов в пуле:** ${poolSize}
+${waitTime}
 
 ${poolSize > 0 
   ? `🚀 Твоя очередь подойдет скоро! Как только освободится код, я сразу тебе отправлю.` 
   : `⏳ Пул пока пуст, но скоро появятся новые коды от участников.`}
 
-📊 Проверить статус: /stats`,
+⚠️ **Важно:** Если найдёшь код раньше в другом месте — пожалуйста, верни неиспользованный код обратно через кнопку "Вернуть неиспользованный инвайт" в /start! Это поможет другим получить доступ быстрее.
+
+📊 Проверить статус: /stats`;
+    },
 
     stats: (position, poolSize, queueSize, codesReturned) => {
       let statusText = '';
@@ -520,16 +542,38 @@ Without your help the system can't work! 🙏
 /start → "Submit Codes"`;
     },
 
-    addedToQueue: (position, poolSize) => `✅ **You've been added to the queue!**
+    addedToQueue: (position, poolSize) => {
+      // Calculate estimated wait time
+      let waitTime = '';
+      if (poolSize >= position) {
+        waitTime = '⚡️ **Estimated wait time:** a few minutes';
+      } else {
+        const waitingAhead = position - poolSize;
+        if (waitingAhead <= 3) {
+          waitTime = '⏱ **Estimated wait time:** 30-90 minutes';
+        } else if (waitingAhead <= 6) {
+          waitTime = '⏱ **Estimated wait time:** 2-4 hours';
+        } else if (waitingAhead <= 12) {
+          waitTime = '⏱ **Estimated wait time:** 4-8 hours';
+        } else {
+          waitTime = '⏱ **Estimated wait time:** 8-24 hours';
+        }
+      }
+      
+      return `✅ **You've been added to the queue!**
 
-📊 Your position: **#${position}**
-💎 Codes in pool: **${poolSize}**
+📊 **Your position:** #${position}
+💎 **Codes in pool:** ${poolSize}
+${waitTime}
 
 ${poolSize > 0 
   ? `🚀 Your turn will come soon! As soon as a code becomes available, I'll send it to you right away.` 
   : `⏳ The pool is empty for now, but new codes from participants will appear soon.`}
 
-📊 Check status: /stats`,
+⚠️ **Important:** If you find a code elsewhere before your turn — please return the unused code via "Return Unused Invite" button in /start! This will help others get access faster.
+
+📊 Check status: /stats`;
+    },
 
     stats: (position, poolSize, queueSize, codesReturned) => {
       let statusText = '';
