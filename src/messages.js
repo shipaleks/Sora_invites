@@ -118,15 +118,34 @@ const MESSAGES = {
 /start → "Отправить коды"`;
     },
 
-    addedToQueue: (position, poolSize) => {
-      // Расчёт примерного времени ожидания
+    addedToQueue: (position, poolSize, avgWaitHours) => {
+      // Расчёт примерного времени ожидания на основе реальной статистики
       let waitTime = '';
+      
       if (poolSize >= position) {
         waitTime = '⚡️ **Примерное время ожидания:** несколько минут';
+      } else if (avgWaitHours !== null) {
+        // Используем реальную статистику
+        const waitingAhead = position - poolSize;
+        const estimatedHours = avgWaitHours * (waitingAhead / Math.max(1, poolSize || 1));
+        
+        if (estimatedHours < 1) {
+          waitTime = `⏱ **Примерное время ожидания:** ${Math.round(estimatedHours * 60)} минут`;
+        } else if (estimatedHours < 2) {
+          waitTime = `⏱ **Примерное время ожидания:** ~${Math.round(estimatedHours)} час`;
+        } else if (estimatedHours < 24) {
+          waitTime = `⏱ **Примерное время ожидания:** ~${Math.round(estimatedHours)} часов`;
+        } else {
+          const days = Math.round(estimatedHours / 24);
+          waitTime = `⏱ **Примерное время ожидания:** ~${days} ${days === 1 ? 'день' : 'дня'}`;
+        }
+        
+        waitTime += `\n\n📊 *Среднее время последних получивших: ${Math.round(avgWaitHours)} ч*`;
       } else {
+        // Фолбэк если нет статистики
         const waitingAhead = position - poolSize;
         if (waitingAhead <= 3) {
-          waitTime = '⏱ **Примерное время ожидания:** 30-90 минут';
+          waitTime = '⏱ **Примерное время ожидания:** 1-2 часа';
         } else if (waitingAhead <= 6) {
           waitTime = '⏱ **Примерное время ожидания:** 2-4 часа';
         } else if (waitingAhead <= 12) {
@@ -542,15 +561,34 @@ Without your help the system can't work! 🙏
 /start → "Submit Codes"`;
     },
 
-    addedToQueue: (position, poolSize) => {
-      // Calculate estimated wait time
+    addedToQueue: (position, poolSize, avgWaitHours) => {
+      // Calculate estimated wait time based on real statistics
       let waitTime = '';
+      
       if (poolSize >= position) {
         waitTime = '⚡️ **Estimated wait time:** a few minutes';
+      } else if (avgWaitHours !== null) {
+        // Use real statistics
+        const waitingAhead = position - poolSize;
+        const estimatedHours = avgWaitHours * (waitingAhead / Math.max(1, poolSize || 1));
+        
+        if (estimatedHours < 1) {
+          waitTime = `⏱ **Estimated wait time:** ${Math.round(estimatedHours * 60)} minutes`;
+        } else if (estimatedHours < 2) {
+          waitTime = `⏱ **Estimated wait time:** ~${Math.round(estimatedHours)} hour`;
+        } else if (estimatedHours < 24) {
+          waitTime = `⏱ **Estimated wait time:** ~${Math.round(estimatedHours)} hours`;
+        } else {
+          const days = Math.round(estimatedHours / 24);
+          waitTime = `⏱ **Estimated wait time:** ~${days} ${days === 1 ? 'day' : 'days'}`;
+        }
+        
+        waitTime += `\n\n📊 *Recent average: ${Math.round(avgWaitHours)} hours*`;
       } else {
+        // Fallback if no statistics
         const waitingAhead = position - poolSize;
         if (waitingAhead <= 3) {
-          waitTime = '⏱ **Estimated wait time:** 30-90 minutes';
+          waitTime = '⏱ **Estimated wait time:** 1-2 hours';
         } else if (waitingAhead <= 6) {
           waitTime = '⏱ **Estimated wait time:** 2-4 hours';
         } else if (waitingAhead <= 12) {

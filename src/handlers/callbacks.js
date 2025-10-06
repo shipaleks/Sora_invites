@@ -116,8 +116,9 @@ export function registerCallbacks(bot) {
     
     const position = await DB.addToQueue(userId);
     const poolSize = await DB.getPoolSize();
+    const avgWaitHours = await DB.getAverageWaitTimeHours();
     
-    await ctx.reply(MESSAGES.addedToQueue(position, poolSize), { 
+    await ctx.reply(MESSAGES.addedToQueue(position, poolSize, avgWaitHours), { 
       parse_mode: 'Markdown' 
     });
     

@@ -79,6 +79,8 @@ export const DB = {
     const maxPosition = queueSnapshot.empty ? 0 : queueSnapshot.docs[0].data().position;
     const newPosition = maxPosition + 1;
 
+    const joinedAt = new Date();
+    
     await db.collection('queue').doc(String(telegramId)).set({
       telegram_id: String(telegramId),
       position: newPosition,
@@ -87,7 +89,8 @@ export const DB = {
 
     await this.updateUser(telegramId, {
       status: 'waiting',
-      requested_at: FieldValue.serverTimestamp()
+      requested_at: FieldValue.serverTimestamp(),
+      joined_queue_at: joinedAt  // Сохраняем для расчёта времени ожидания
     });
 
     return newPosition;
@@ -101,6 +104,44 @@ export const DB = {
     }
     
     return doc.data().position;
+  },
+
+  // Получить среднее время ожидания (в часах) на основе последних получивших инвайты
+  async getAverageWaitTimeHours() {
+    try {
+      const allUsers = await this.getAllUsers();
+      
+      // Берём только тех, кто получил инвайт в последние 72 часа и у кого есть joined_queue_at
+      const recentUsers = allUsers.filter(u => {
+        if (!u.invite_sent_at || !u.joined_queue_at) return false;
+        
+        const inviteTime = u.invite_sent_at?.toDate?.() || new Date(u.invite_sent_at);
+        const now = new Date();
+        const hoursSinceInvite = (now - inviteTime) / (1000 * 60 * 60);
+        
+        return hoursSinceInvite <= 72; // Последние 3 дня
+      });
+      
+      if (recentUsers.length === 0) {
+        return null; // Нет данных
+      }
+      
+      // Считаем время ожидания для каждого
+      const waitTimes = recentUsers.map(u => {
+        const joinedAt = u.joined_queue_at?.toDate?.() || new Date(u.joined_queue_at);
+        const sentAt = u.invite_sent_at?.toDate?.() || new Date(u.invite_sent_at);
+        const waitHours = (sentAt - joinedAt) / (1000 * 60 * 60);
+        return waitHours > 0 ? waitHours : 0;
+      });
+      
+      // Среднее время
+      const avgWaitHours = waitTimes.reduce((sum, t) => sum + t, 0) / waitTimes.length;
+      
+      return avgWaitHours;
+    } catch (error) {
+      console.error('Error calculating average wait time:', error);
+      return null;
+    }
   },
 
   async getQueueSize() {
