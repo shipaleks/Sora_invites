@@ -155,10 +155,29 @@ function startQueueProcessor(bot) {
             break;
           }
           
-          const availableCode = await DB.getAvailableCode();
-          if (!availableCode) {
+          // Подбираем код, который пользователь ранее не репортил
+          let availableCode = null;
+          const candidateCodes = await DB.getAvailableCodes(10);
+          if (candidateCodes.length === 0) {
             console.log(`[Scheduler] No available codes (processed ${processed} invites)`);
             break;
+          }
+
+          const userForCodeCheck = await DB.getUser(nextUser.telegram_id);
+          availableCode = candidateCodes.find(c => !(userForCodeCheck.invalid_codes_reported || []).includes(c.code));
+          
+          if (!availableCode) {
+            // Пробуем расширить окно выбора
+            const moreCandidateCodes = await DB.getAvailableCodes(100);
+            availableCode = moreCandidateCodes.find(c => !(userForCodeCheck.invalid_codes_reported || []).includes(c.code));
+          }
+
+          if (!availableCode) {
+            // Чтобы не блокировать очередь для остальных — переносим пользователя в конец очереди
+            console.log(`[Scheduler] All available codes are reported by user ${nextUser.telegram_id}. Rotating user to the end of queue.`);
+            await DB.removeFromQueue(nextUser.telegram_id);
+            await DB.addToQueue(nextUser.telegram_id);
+            continue; // пробуем следующего в этом же цикле
           }
           
           // Отправить инвайт
@@ -213,19 +232,22 @@ async function processNextInvite(bot, userId, codeObj) {
       return;
     }
     
-    // НОВАЯ ПРОВЕРКА: Не получал ли пользователь этот код раньше?
-    // Проверяем список кодов на которые жаловался
+    // БАН: не отправляем инвайт забаненным, чистим очередь
+    if (user.is_banned) {
+      console.log(`[Queue] User ${userId} is banned, removing from queue`);
+      await DB.removeFromQueue(userId);
+      return;
+    }
+    
+    // Пропуск репорченного кода обрабатывается на этапе подбора кода, здесь дополнительно защищаемся
     if (user.invalid_codes_reported?.includes(codeObj.code)) {
-      console.log(`[Queue] User ${userId} already reported code ${codeObj.code}, skipping and trying next code`);
-      // Помечаем код как проблемный и пропускаем
-      await DB.markCodeAsSent(codeObj.id, 'skipped_reported');
-      // Не удаляем пользователя из очереди - scheduler попробует следующий код в следующем цикле
+      console.log(`[Queue] User ${userId} already reported code ${codeObj.code}, selecting another code`);
       return;
     }
     
     const MESSAGES = getMessages(user.language || 'ru');
     
-    // ВАЖНО: Сначала удаляем из очереди, потом отправляем
+    // ВАЖНО: Удаляем из очереди только перед самой отправкой
     await DB.removeFromQueue(userId);
     
     // Определяем является ли пользователь из первых 10
@@ -296,7 +318,7 @@ async function sendUrgentHelpRequest(bot) {
     
     for (const user of targetUsers) {
       try {
-        const { getMessages } = await import('../messages.js');
+        const { getMessages } = await import('./messages.js');
         const MESSAGES = getMessages(user.language || 'ru');
         
         const urgentMessage = user.language === 'en'

@@ -1,7 +1,7 @@
 import DB from '../database.js';
 import { getMessages } from '../messages.js';
 import config from '../config.js';
-import { extractCodes } from '../utils/validators.js';
+import { extractCodes, validateInviteCode } from '../utils/validators.js';
 import { pluralize } from '../utils/helpers.js';
 
 export function registerTextHandlers(bot) {
@@ -80,6 +80,11 @@ export function registerTextHandlers(bot) {
       return ctx.reply(msg);
     }
     
+    // 2.5. Пожертвование кода (donation)
+    if (user.awaiting_donation === true) {
+      return handleDonation(ctx, user);
+    }
+
     // 3. Поделиться кодом (универсальная обработка)
     if (user.awaiting_share === true) {
       return handleCodeSharing(ctx, user);
@@ -118,7 +123,7 @@ async function handleCodeSharing(ctx, user) {
     )
   ).length;
   
-  if (complaintsOnUserCodes >= 2) {
+  if (complaintsOnUserCodes >= 3) {
     return ctx.reply(
       `🚫 На твои предыдущие коды поступили жалобы.\n\nОтправка новых кодов временно заблокирована.\n\nПожалуйста отправляй только действующие коды!`,
       { parse_mode: 'Markdown' }
@@ -130,8 +135,13 @@ async function handleCodeSharing(ctx, user) {
       parse_mode: 'Markdown' 
     });
   }
-  
+
   const code = codes[0]; // Берём первый код
+  if (!validateInviteCode(code)) {
+    return ctx.reply('❌ Похоже, это невалидный код. Код должен состоять из 6 букв/цифр.', {
+      parse_mode: 'Markdown'
+    });
+  }
   const botGivenCode = user.invite_code_given?.toUpperCase();
   
   // ПРОСТАЯ ПРОВЕРКА: код от бота блокируем, остальные принимаем
@@ -159,6 +169,7 @@ async function handleCodeSharing(ctx, user) {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [
+          [{ text: MESSAGES.buttons.usage1, callback_data: 'usage_1' }],
           [{ text: MESSAGES.buttons.usage2, callback_data: 'usage_2' }],
           [{ text: MESSAGES.buttons.usage3, callback_data: 'usage_3' }],
           [{ text: MESSAGES.buttons.usage4, callback_data: 'usage_4' }]
@@ -194,9 +205,16 @@ async function handleDonation(ctx, user) {
   if (codes.length === 0) {
     return ctx.reply('❌ Не найден код.', { parse_mode: 'Markdown' });
   }
+
+  const first = codes[0];
+  if (!validateInviteCode(first)) {
+    return ctx.reply('❌ Похоже, это невалидный код. Код должен состоять из 6 букв/цифр.', {
+      parse_mode: 'Markdown'
+    });
+  }
   
   try {
-    const code = codes[0];
+    const code = first;
     
     await DB.updateUser(user.telegram_id, {
       pending_donation_code: code,
@@ -212,6 +230,7 @@ async function handleDonation(ctx, user) {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [
+          [{ text: MESSAGES.buttons.usage1, callback_data: 'donation_usage_1' }],
           [{ text: MESSAGES.buttons.usage2, callback_data: 'donation_usage_2' }],
           [{ text: MESSAGES.buttons.usage3, callback_data: 'donation_usage_3' }],
           [{ text: MESSAGES.buttons.usage4, callback_data: 'donation_usage_4' }]
@@ -320,7 +339,7 @@ async function handleAdminAddCodes(ctx, text, language) {
   const addedCount = await DB.addCodesToPoolWithLimit(code, 'admin', usageCount);
   
   if (addedCount === 0) {
-    return ctx.reply(`❌ Код ${code} уже исчерпал лимит (4 макс)`);
+    return ctx.reply(`❌ Код ${code} уже исчерпал лимит (${config.rules.maxCodeUsage} макс)`);
   }
   
   return ctx.reply(`✅ Добавлен:\nКод: \`${code}\`\nИспользований: ${addedCount}`, {

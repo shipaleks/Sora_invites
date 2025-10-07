@@ -119,6 +119,25 @@ export function registerCommands(bot) {
     }
   });
 
+  // /confirmedreset (admin)
+  bot.command('confirmedreset', async (ctx) => {
+    const userId = ctx.from.id;
+    if (userId !== config.telegram.adminId) {
+      return; // игнорируем не-админов
+    }
+
+    try {
+      await ctx.reply('🧹 Выполняю полный сброс...');
+      const clearedPool = await DB.clearAllAvailableCodes();
+      const clearedQueue = await DB.clearQueue();
+      const clearedUsers = await DB.resetAllUsers();
+      await ctx.reply(`✅ Готово!\nПул: -${clearedPool}\nОчередь: -${clearedQueue}\nПользователи: -${clearedUsers}`);
+    } catch (error) {
+      console.error('Reset error:', error);
+      await ctx.reply('❌ Ошибка при сбросе. См. логи.');
+    }
+  });
+
   // /language - смена языка
   bot.command('language', async (ctx) => {
     const userId = ctx.from.id;

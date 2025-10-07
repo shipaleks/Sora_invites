@@ -364,7 +364,7 @@ export function registerCallbacks(bot) {
             
             console.log(`[COMPLAINTS] Author @${author.username}: ${complaintsCount} unique complaints`);
             
-            // АВТОМАТИЧЕСКИЙ SHADOW BAN после 3 уникальных жалоб
+            // АВТОМАТИЧЕСКИЙ SHADOW BAN после 3 уникальных жалоб (унифицировано)
             if (complaintsCount >= 3 && !author.is_banned) {
               await DB.banUser(realAuthorId, `Автобан: ${complaintsCount} жалоб на коды`);
               
@@ -411,6 +411,22 @@ export function registerCallbacks(bot) {
         }
       }
       
+      // Удаляем все доступные вхождения этого кода из пула, чтобы не циркулировал
+      try {
+        const poolEntries = await db.collection('invite_pool')
+          .where('code', '==', code)
+          .where('status', '==', 'available')
+          .get();
+        const batch = db.batch();
+        poolEntries.forEach(doc => batch.delete(doc.ref));
+        if (!poolEntries.empty) {
+          await batch.commit();
+          await DB.updateSystemSettings({ codes_in_pool: Math.max(0, (await DB.getPoolSize())) });
+        }
+      } catch (e) {
+        console.error('Failed to purge invalid code from pool:', e.message);
+      }
+
       // Даём пользователю новый инвайт если есть в пуле
       const currentInvites = user.invites_received_count || 0;
       
@@ -422,8 +438,8 @@ export function registerCallbacks(bot) {
       }
       
       const msg = user?.language === 'en'
-        ? `✅ Report received and processed.\n\n${author?.is_banned ? '🔨 The author has been auto-banned (2+ complaints).\n\n' : ''}You'll get a new invite soon!`
-        : `✅ Жалоба принята и обработана.\n\n${author?.is_banned ? '🔨 Автор автоматически забанен (2+ жалобы).\n\n' : ''}Скоро получишь новый инвайт!`;
+        ? `✅ Report received and processed.\n\n${author?.is_banned ? '🔨 The author has been auto-banned (3+ complaints).\n\n' : ''}You'll get a new invite soon!`
+        : `✅ Жалоба принята и обработана.\n\n${author?.is_banned ? '🔨 Автор автоматически забанен (3+ жалобы).\n\n' : ''}Скоро получишь новый инвайт!`;
       
       await ctx.editMessageText(msg);
       
@@ -578,7 +594,7 @@ Thanks! 🙏`
         codes_submitted: [code],
         pending_code: null,
         awaiting_usage_choice: false,
-        usage_count_shared: usageCount,
+        usage_count_shared: (user.usage_count_shared || 0) + usageCount,
         status: 'completed'
       });
       
@@ -644,7 +660,8 @@ Up to ${usageCount} people will get access through bot. You're all set! 🎉`
       // Обновляем флаги
       await DB.updateUser(user.telegram_id, {
         pending_donation_code: null,
-        awaiting_donation_usage: false
+        awaiting_donation_usage: false,
+        usage_count_shared: (user.usage_count_shared || 0) + usageCount
       });
       
       const remaining = 4 - usageCount;

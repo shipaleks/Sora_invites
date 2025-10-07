@@ -230,9 +230,8 @@ export const DB = {
     
     console.log(`[Pool] Code ${code}: total usage ${totalUsage}, requesting ${usageLimit} more`);
     
-    // Мягкий лимит: максимум 20 использований на код (Sora пополняет коды)
-    // Раньше было 4, но Sora теперь даёт дополнительные использования
-    const MAX_CODE_USAGE = 20;
+    // Мягкий лимит: максимум из конфигурации (Sora может увеличивать лимиты)
+    const MAX_CODE_USAGE = config.rules.maxCodeUsage;
     
     if (totalUsage >= MAX_CODE_USAGE) {
       console.log(`[Pool] Code ${code} reached max usage (${MAX_CODE_USAGE}/${MAX_CODE_USAGE})`);
@@ -290,6 +289,15 @@ export const DB = {
       id: doc.id,
       ...doc.data()
     };
+  },
+
+  async getAvailableCodes(limit = 10) {
+    const snapshot = await db.collection('invite_pool')
+      .where('status', '==', 'available')
+      .limit(limit)
+      .get();
+    
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   },
 
   async markCodeAsSent(codeId, sentTo) {
