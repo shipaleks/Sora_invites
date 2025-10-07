@@ -55,12 +55,13 @@ export async function enhancePromptWithCookbook(userPrompt, language = 'ru') {
 - Не добавляй NSFW, насилие, детский контент, разжигание ненависти.
 - Верни только улучшенный промпт без пояснений.`;
   const body = {
-    model: 'gpt-5-mini',
+    model: 'gpt-4o-mini',
     messages: [
       { role: 'system', content: system },
       { role: 'user', content: userPrompt }
     ],
-    max_completion_tokens: 400
+    max_completion_tokens: 400,
+    temperature: 0.7
   };
 
   const resp = await fetch(`${OPENAI_BASE}/chat/completions`, {
