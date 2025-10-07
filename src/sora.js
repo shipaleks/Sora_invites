@@ -126,7 +126,7 @@ export async function createSoraVideo({ model, prompt, durationSeconds = 4, widt
   const payload = {
     model, // 'sora-2' | 'sora-2-pro'
     prompt,
-    seconds: durationSeconds,
+    seconds: String(durationSeconds), // API expects string "4", "8", or "12"
     size: width && height ? `${width}x${height}` : undefined,
     image_reference_url: imageUrl || undefined
   };
