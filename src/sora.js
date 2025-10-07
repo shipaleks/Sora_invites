@@ -55,7 +55,7 @@ export async function enhancePromptWithCookbook(userPrompt, language = 'ru') {
 - Не добавляй NSFW, насилие, детский контент, разжигание ненависти.
 - Верни только улучшенный промпт без пояснений.`;
   const body = {
-    model: 'gpt-4o-mini',
+    model: 'gpt-5-mini',
     messages: [
       { role: 'system', content: system },
       { role: 'user', content: userPrompt }
