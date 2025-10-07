@@ -76,8 +76,12 @@ export async function enhancePromptWithCookbook(userPrompt, language = 'ru') {
     throw new Error(`Prompt enhance failed: ${resp.status} ${text}`);
   }
   const data = await resp.json();
+  console.log('[Sora] GPT response:', JSON.stringify(data, null, 2));
   const content = data.choices?.[0]?.message?.content?.trim();
-  if (!content) throw new Error('Empty enhanced prompt');
+  if (!content) {
+    console.error('[Sora] Empty content from GPT. Full response:', data);
+    throw new Error('Empty enhanced prompt');
+  }
   return content;
 }
 
