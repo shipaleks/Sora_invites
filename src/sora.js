@@ -60,7 +60,6 @@ export async function enhancePromptWithCookbook(userPrompt, language = 'ru') {
       { role: 'system', content: system },
       { role: 'user', content: userPrompt }
     ],
-    temperature: 0.7,
     max_completion_tokens: 400
   };
 
