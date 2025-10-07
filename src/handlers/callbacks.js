@@ -761,4 +761,31 @@ Up to ${usageCount} people will register thanks to you! 🎉`
     await ctx.reply('⚙️ Конструктор (тест): отправь в одном сообщении параметры, пример:\n"8с, Pro Max, 9:16, промпт .... [опционально ссылка на изображение]"');
     await DB.updateUser(userId, { sora_pending_mode: 'constructor' });
   });
+
+  // === Sora prompt choice ===
+  bot.action('sora_use_enhanced', async (ctx) => {
+    await ctx.answerCbQuery();
+    const userId = ctx.from.id;
+    if (userId !== config.telegram.adminId) return;
+    const user = await DB.getUser(userId);
+    if (!user || !user.sora_enhanced_prompt) {
+      return ctx.reply('❌ Промпт не найден. Попробуй ещё раз.');
+    }
+    // Импортируем executeSoraGeneration из text.js
+    const { executeSoraGeneration } = await import('../handlers/text.js');
+    await executeSoraGeneration(ctx, user, user.sora_enhanced_prompt, true);
+  });
+
+  bot.action('sora_use_original', async (ctx) => {
+    await ctx.answerCbQuery();
+    const userId = ctx.from.id;
+    if (userId !== config.telegram.adminId) return;
+    const user = await DB.getUser(userId);
+    if (!user || !user.sora_original_prompt) {
+      return ctx.reply('❌ Промпт не найден. Попробуй ещё раз.');
+    }
+    // Импортируем executeSoraGeneration из text.js
+    const { executeSoraGeneration } = await import('../handlers/text.js');
+    await executeSoraGeneration(ctx, user, user.sora_original_prompt, false);
+  });
 }

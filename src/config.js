@@ -34,10 +34,10 @@ export default {
     openaiApiKey: process.env.OPENAI_API_KEY,
     // Конкурентность генерации видео (воркеры)
     concurrency: parseInt(process.env.SORA_CONCURRENCY || '2'),
-    // Таймауты
-    createTimeoutMs: parseInt(process.env.SORA_CREATE_TIMEOUT_MS || '180000'),
-    pollIntervalMs: parseInt(process.env.SORA_POLL_INTERVAL_MS || '4000'),
-    pollTimeoutMs: parseInt(process.env.SORA_POLL_TIMEOUT_MS || '600000')
+    // Таймауты (Sora генерация может занимать 3-5 минут)
+    createTimeoutMs: parseInt(process.env.SORA_CREATE_TIMEOUT_MS || '300000'), // 5 min
+    pollIntervalMs: parseInt(process.env.SORA_POLL_INTERVAL_MS || '5000'), // 5s
+    pollTimeoutMs: parseInt(process.env.SORA_POLL_TIMEOUT_MS || '900000') // 15 min
   },
 
   pricing: {

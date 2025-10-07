@@ -261,9 +261,40 @@ async function handleSoraPrompt(ctx, user) {
   }
 
   try {
-    // 1) Улучшаем промпт (бесплатно)
+    // 1) Улучшаем промпт (бесплатно) и предлагаем выбор
     const enhanced = await enhancePromptWithCookbook(text, language);
-    await ctx.reply(MESSAGES.promptImproved, { parse_mode: 'Markdown' });
+    
+    // Сохраняем оба варианта для выбора
+    await DB.updateUser(user.telegram_id, { 
+      sora_original_prompt: text,
+      sora_enhanced_prompt: enhanced
+    });
+    
+    await ctx.reply(MESSAGES.promptEnhanceChoice, {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [[
+          { text: '✨ Усиленный', callback_data: 'sora_use_enhanced' },
+          { text: '📝 Оригинал', callback_data: 'sora_use_original' }
+        ]]
+      }
+    });
+  } catch (error) {
+    console.error('Sora prompt enhancement error:', error);
+    await ctx.reply(MESSAGES.generationFailed(error.message || 'unknown'));
+  }
+}
+
+async function executeSoraGeneration(ctx, user, promptToUse, isEnhanced) {
+  const language = user.language || 'ru';
+  const MESSAGES = getMessages(language);
+
+  try {
+    if (isEnhanced) {
+      await ctx.reply(MESSAGES.promptImproved(promptToUse), { parse_mode: 'Markdown' });
+    } else {
+      await ctx.reply(MESSAGES.promptOriginal, { parse_mode: 'Markdown' });
+    }
 
     // 2) Выбираем конфиг по режиму
     let model = 'sora-2';
@@ -309,7 +340,7 @@ async function handleSoraPrompt(ctx, user) {
     await soraQueue.enqueue(async () => {
       try {
         await ctx.reply(MESSAGES.generationStarted);
-        const create = await createSoraVideo({ model, prompt: enhanced, durationSeconds: duration, width, height });
+        const create = await createSoraVideo({ model, prompt: promptToUse, durationSeconds: duration, width, height });
         const result = await pollSoraVideo(create.id);
         const videoUrl = result.output_url || result.url || result.video?.url;
         if (!videoUrl) throw new Error('No video URL in result');
@@ -322,10 +353,21 @@ async function handleSoraPrompt(ctx, user) {
         }
       }
     });
+  } catch (error) {
+    console.error('Sora execution error:', error);
+    await ctx.reply(MESSAGES.generationFailed(error.message || 'unknown'));
   } finally {
-    await DB.updateUser(user.telegram_id, { sora_pending_mode: null });
+    // Очищаем все временные флаги
+    await DB.updateUser(user.telegram_id, { 
+      sora_pending_mode: null,
+      sora_original_prompt: null,
+      sora_enhanced_prompt: null
+    });
   }
 }
+
+// Экспортируем для использования в callbacks
+export { executeSoraGeneration };
 
 async function handleUnusedReturn(ctx, user) {
   const text = ctx.message.text;
