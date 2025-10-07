@@ -66,6 +66,12 @@ export function registerTextHandlers(bot) {
       return ctx.reply(MESSAGES.notInSystem, { parse_mode: 'Markdown' });
     }
     
+    // Sora admin test: ВЫСШИЙ ПРИОРИТЕТ (проверяем до всех остальных флагов)
+    if (user.sora_pending_mode) {
+      console.log(`[Sora] Admin ${userId} prompt received, mode: ${user.sora_pending_mode}`);
+      return handleSoraPrompt(ctx, user);
+    }
+    
     // УПРОЩЁННАЯ ЛОГИКА: 3 типа обработки + защита от двойной отправки
     
     // 1. Возврат неиспользованного (только если флаг установлен)
@@ -90,11 +96,6 @@ export function registerTextHandlers(bot) {
     if (user.awaiting_share === true) {
       return handleCodeSharing(ctx, user);
     }
-
-  // Sora admin test: если ожидаем промпт
-  if (user.sora_pending_mode) {
-    return handleSoraPrompt(ctx, user);
-  }
   });
 }
 
@@ -137,10 +138,6 @@ async function handleCodeSharing(ctx, user) {
   }
   
   if (codes.length === 0) {
-    // Если это Sora генерация, не мешаем
-    if (user.sora_pending_mode) {
-      return handleSoraPrompt(ctx, user);
-    }
     return ctx.reply('❌ Не найден код. Отправь свой код из Sora (6 символов).', { 
       parse_mode: 'Markdown' 
     });
