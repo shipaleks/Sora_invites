@@ -170,12 +170,12 @@ export function registerCommands(bot) {
     await ctx.reply(MESSAGES.generateAdminIntro, {
       reply_markup: {
         inline_keyboard: [[
-          { text: MESSAGES.generateOptions.basic4s, callback_data: 'gen_basic4s' }
+          { text: '✨ ' + MESSAGES.generateOptions.basic4s, callback_data: 'gen_basic4s' }
         ],[
-          { text: MESSAGES.generateOptions.pro4s, callback_data: 'gen_pro4s' }
+          { text: '💎 ' + MESSAGES.generateOptions.pro4s, callback_data: 'gen_pro4s' }
         ],[
-          { text: MESSAGES.generateOptions.bundles, callback_data: 'gen_bundles' },
-          { text: MESSAGES.generateOptions.constructor, callback_data: 'gen_constructor' }
+          { text: '🎁 ' + MESSAGES.generateOptions.bundles, callback_data: 'gen_bundles' },
+          { text: '⚙️ ' + MESSAGES.generateOptions.constructor, callback_data: 'gen_constructor' }
         ]]
       },
       parse_mode: 'Markdown'

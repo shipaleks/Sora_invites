@@ -720,7 +720,7 @@ Up to ${usageCount} people will register thanks to you! 🎉`
     if (userId !== config.telegram.adminId) return;
     const user = await DB.getUser(userId);
     const MESSAGES = getMessages(user?.language || 'ru');
-    await ctx.reply(MESSAGES.proDisclaimer + '\n\n' + MESSAGES.promptAsk, { parse_mode: 'Markdown' });
+    await ctx.reply(MESSAGES.promptAsk, { parse_mode: 'Markdown' });
     await DB.updateUser(userId, { sora_pending_mode: 'basic4s' });
   });
 
@@ -730,7 +730,8 @@ Up to ${usageCount} people will register thanks to you! 🎉`
     if (userId !== config.telegram.adminId) return;
     const user = await DB.getUser(userId);
     const MESSAGES = getMessages(user?.language || 'ru');
-    await ctx.reply(MESSAGES.proDisclaimer + '\n\n' + MESSAGES.promptAsk, { parse_mode: 'Markdown' });
+    const rubles = Math.round(250 * (config.pricing.starToRub || 1));
+    await ctx.reply(MESSAGES.proDisclaimer(rubles) + '\n\n' + MESSAGES.promptAsk, { parse_mode: 'Markdown' });
     await DB.updateUser(userId, { sora_pending_mode: 'pro4s' });
   });
 

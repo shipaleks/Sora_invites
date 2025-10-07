@@ -56,7 +56,9 @@ export default {
       baseRatePerSecond: { lite: 13, proMax: 62 },
       roundToSeconds: [4, 8, 12],
       roundStarsTo: 50
-    }
+    },
+    // Приблизительная конверсия 1⭐ → ₽ (настраивается, по умолчанию 1)
+    starToRub: parseFloat(process.env.STAR_TO_RUB || '1.0')
   }
 };
 

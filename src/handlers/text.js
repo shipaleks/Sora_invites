@@ -137,6 +137,10 @@ async function handleCodeSharing(ctx, user) {
   }
   
   if (codes.length === 0) {
+    // Если это Sora генерация, не мешаем
+    if (user.sora_pending_mode) {
+      return handleSoraPrompt(ctx, user);
+    }
     return ctx.reply('❌ Не найден код. Отправь свой код из Sora (6 символов).', { 
       parse_mode: 'Markdown' 
     });
