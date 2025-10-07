@@ -22,3 +22,17 @@ export function getHoursSince(timestamp) {
   const now = new Date();
   return (now - date) / (1000 * 60 * 60);
 }
+
+export function roundUpTo(values, target) {
+  // Возвращает минимальное значение из values, которое >= target
+  const sorted = [...values].sort((a, b) => a - b);
+  for (const v of sorted) {
+    if (v >= target) return v;
+  }
+  return sorted[sorted.length - 1];
+}
+
+export function roundStarsUp(value, step) {
+  if (step <= 0) return value;
+  return Math.ceil(value / step) * step;
+}

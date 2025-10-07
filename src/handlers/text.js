@@ -1,7 +1,8 @@
 import DB from '../database.js';
 import { getMessages } from '../messages.js';
 import config from '../config.js';
-import { extractCodes, validateInviteCode } from '../utils/validators.js';
+import { extractCodes, validateInviteCode, validateSoraPrompt } from '../utils/validators.js';
+import { enhancePromptWithCookbook, createSoraVideo, pollSoraVideo, soraQueue, Stars } from '../sora.js';
 import { pluralize } from '../utils/helpers.js';
 
 export function registerTextHandlers(bot) {
@@ -89,6 +90,11 @@ export function registerTextHandlers(bot) {
     if (user.awaiting_share === true) {
       return handleCodeSharing(ctx, user);
     }
+
+  // Sora admin test: если ожидаем промпт
+  if (user.sora_pending_mode) {
+    return handleSoraPrompt(ctx, user);
+  }
   });
 }
 
@@ -240,6 +246,83 @@ async function handleDonation(ctx, user) {
   } catch (error) {
     console.error('Error processing donation:', error);
     await ctx.reply('❌ Ошибка.');
+  }
+}
+
+async function handleSoraPrompt(ctx, user) {
+  const language = user.language || 'ru';
+  const MESSAGES = getMessages(language);
+  const text = ctx.message.text || '';
+
+  const basicValidation = validateSoraPrompt(text);
+  if (!basicValidation.ok) {
+    return ctx.reply(MESSAGES.generationFailed('Плохой промпт. Попробуй иначе.'));
+  }
+
+  try {
+    // 1) Улучшаем промпт (бесплатно)
+    const enhanced = await enhancePromptWithCookbook(text, language);
+    await ctx.reply(MESSAGES.promptImproved, { parse_mode: 'Markdown' });
+
+    // 2) Выбираем конфиг по режиму
+    let model = 'sora-2';
+    let duration = 4;
+    let width = 1280, height = 720; // 720p для basic
+    let starsToCharge = 0;
+
+    if (user.sora_pending_mode === 'basic4s') {
+      starsToCharge = 100;
+      model = 'sora-2';
+      width = 1280; height = 720;
+    } else if (user.sora_pending_mode === 'pro4s') {
+      starsToCharge = 250;
+      model = 'sora-2-pro';
+      // Выберем вертикаль по умолчанию
+      width = 1024; height = 1792;
+    } else if (user.sora_pending_mode === 'constructor') {
+      // Простейший парсер параметров конструктора
+      // Пример: "8с, Pro Max, 9:16, промпт ..."
+      const secondsMatch = text.match(/(4|8|12)\s*с/i);
+      duration = secondsMatch ? parseInt(secondsMatch[1]) : 4;
+      const qualityMatch = /pro\s*max/i.test(text) ? 'proMax' : 'lite';
+      const ratioMatch = /(9\s*:\s*16|16\s*:\s*9)/i.exec(text);
+      const vertical = ratioMatch ? /9\s*:\s*16/i.test(ratioMatch[1]) : true;
+      if (qualityMatch === 'proMax') {
+        model = 'sora-2-pro';
+      }
+      if (vertical) { width = 1024; height = 1792; } else { width = 1792; height = 1024; }
+      // Цена (эмулируем списание)
+      starsToCharge = Stars ? 0 : 0; // админ-тест: не списываем реально
+    }
+
+    // 3) Списываем звёзды (эмуляция)
+    if (starsToCharge > 0) {
+      await ctx.reply(MESSAGES.paymentRequested(starsToCharge), { parse_mode: 'Markdown' });
+      const charge = await Stars.charge(ctx, starsToCharge, `Sora gen ${user.sora_pending_mode}`);
+      if (!charge.ok) throw new Error('Charge failed');
+    }
+
+    await ctx.reply(MESSAGES.generationQueued);
+
+    // 4) Пускаем в очередь на генерацию
+    await soraQueue.enqueue(async () => {
+      try {
+        await ctx.reply(MESSAGES.generationStarted);
+        const create = await createSoraVideo({ model, prompt: enhanced, durationSeconds: duration, width, height });
+        const result = await pollSoraVideo(create.id);
+        const videoUrl = result.output_url || result.url || result.video?.url;
+        if (!videoUrl) throw new Error('No video URL in result');
+        await ctx.replyWithVideo({ url: videoUrl }, { caption: MESSAGES.generationSuccess });
+      } catch (err) {
+        console.error('Sora generation error:', err);
+        await ctx.reply(MESSAGES.generationFailed(err.message || 'unknown'));
+        if (starsToCharge > 0) {
+          try { await Stars.refund(ctx, starsToCharge, err.message || 'error'); await ctx.reply(MESSAGES.paymentRefunded(starsToCharge)); } catch (e) { /* noop */ }
+        }
+      }
+    });
+  } finally {
+    await DB.updateUser(user.telegram_id, { sora_pending_mode: null });
   }
 }
 

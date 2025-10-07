@@ -448,6 +448,30 @@ Send the code that SORA gave YOU (different from ${code})`
 
 **Если ты зарегистрировался в Sora:**
 Отправь код который выдала ТЕБЕ Sora (он другой, не ${code})`
+    ,
+    // ==== Sora Generation (admin test) ====
+    generateAdminIntro: `🎬 **Генерация видео (тест, только админ)**\n\nВыбери режим:`,
+    generateOptions: {
+      basic4s: 'Обычный · sora-2 · 720p · 4с (100⭐)',
+      pro4s: 'Профессиональный · sora-2-pro · 1024×1792/1792×1024 · 4с (250⭐)',
+      bundles: 'Бандлы',
+      constructor: 'Кастом-конструктор'
+    },
+    bundlesMenu: {
+      basic: 'Обычный 4с',
+      pro: 'Про 4с',
+      back: '⬅️ Назад'
+    },
+    promptAsk: `📝 Отправь промпт на русском.\n\nМожно дополнить ссылкой на референс-изображение.`,
+    promptImproved: `✨ Промпт усилен и проверен. Запускаю генерацию...`,
+    paymentRequested: (stars) => `💫 Списываю ${stars}⭐ через Telegram Stars...`,
+    paymentRefunded: (stars) => `↩️ Возврат ${stars}⭐ из-за ошибки генерации.`,
+    generationQueued: `⏳ Задача отправлена в очередь, скоро начнём.`,
+    generationStarted: `🚀 Генерация началась...`,
+    generationProgress: (p) => `⏳ Прогресс: ${p}%...`,
+    generationSuccess: `✅ Готово!`,
+    generationFailed: (reason) => `❌ Ошибка генерации: ${reason}`,
+    proDisclaimer: `ℹ️ Модель sora-2-pro обычно доступна только в подписке OpenAI за $100/мес.`
   },
 
   en: {
@@ -718,6 +742,30 @@ System only works if people give MORE than they take. Currently ~50% freeload an
 🙏 Recommend **3-4 uses** - system critically needs it!
 
 Choose:`
+  ,
+    // ==== Sora Generation (admin test) ====
+    generateAdminIntro: `🎬 **Video generation (test, admin only)**\\n\\nChoose mode:`,
+    generateOptions: {
+      basic4s: 'Basic · sora-2 · 720p · 4s (100⭐)',
+      pro4s: 'Pro · sora-2-pro · 1024×1792/1792×1024 · 4s (250⭐)',
+      bundles: 'Bundles',
+      constructor: 'Custom Builder'
+    },
+    bundlesMenu: {
+      basic: 'Basic 4s',
+      pro: 'Pro 4s',
+      back: '⬅️ Back'
+    },
+    promptAsk: `📝 Send a prompt in your language (Russian supported).\\n\\nYou may include an image reference URL.`,
+    promptImproved: `✨ Prompt enhanced and validated. Starting generation...`,
+    paymentRequested: (stars) => `💫 Charging ${stars}⭐ via Telegram Stars...`,
+    paymentRefunded: (stars) => `↩️ Refunded ${stars}⭐ due to generation error.`,
+    generationQueued: `⏳ Task queued, starting soon.`,
+    generationStarted: `🚀 Generation started...`,
+    generationProgress: (p) => `⏳ Progress: ${p}%...`,
+    generationSuccess: `✅ Done!`,
+    generationFailed: (reason) => `❌ Generation error: ${reason}`,
+    proDisclaimer: `ℹ️ Model sora-2-pro is usually available only on $100/mo OpenAI tier.`
   }
 };
 

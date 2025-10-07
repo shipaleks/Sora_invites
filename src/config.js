@@ -28,6 +28,35 @@ export default {
     nodeEnv: process.env.NODE_ENV || 'development',
     port: parseInt(process.env.PORT) || 3000,
     webhookDomain: process.env.WEBHOOK_DOMAIN
+  },
+
+  sora: {
+    openaiApiKey: process.env.OPENAI_API_KEY,
+    // Конкурентность генерации видео (воркеры)
+    concurrency: parseInt(process.env.SORA_CONCURRENCY || '2'),
+    // Таймауты
+    createTimeoutMs: parseInt(process.env.SORA_CREATE_TIMEOUT_MS || '180000'),
+    pollIntervalMs: parseInt(process.env.SORA_POLL_INTERVAL_MS || '4000'),
+    pollTimeoutMs: parseInt(process.env.SORA_POLL_TIMEOUT_MS || '600000')
+  },
+
+  pricing: {
+    // Индивидуальные
+    single: {
+      basic4s: 100, // sora-2, 720p, 4s
+      pro4s: 250    // sora-2-pro, 1024×1792/1792×1024, 4s
+    },
+    // Бандлы (кратно 50)
+    bundles: {
+      basic4s: { '3': 250, '5': 450, '10': 800 },
+      pro4s:   { '3': 650, '5': 1100, '10': 2000 }
+    },
+    // Конструктор
+    constructor: {
+      baseRatePerSecond: { lite: 13, proMax: 62 },
+      roundToSeconds: [4, 8, 12],
+      roundStarsTo: 50
+    }
   }
 };
 

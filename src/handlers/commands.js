@@ -1,6 +1,8 @@
 import DB from '../database.js';
 import { getMessages } from '../messages.js';
 import config from '../config.js';
+import { enhancePromptWithCookbook, createSoraVideo, pollSoraVideo, soraQueue, Stars, SoraPricing } from '../sora.js';
+import { validateSoraPrompt } from '../utils/validators.js';
 
 export function registerCommands(bot) {
   // /start
@@ -152,6 +154,31 @@ export function registerCommands(bot) {
           { text: MESSAGES.buttons.english, callback_data: 'lang_en' }
         ]]
       }
+    });
+  });
+
+  // /generate (admin only test flow)
+  bot.command('generate', async (ctx) => {
+    const userId = ctx.from.id;
+    if (userId !== config.telegram.adminId) {
+      return;
+    }
+
+    const user = await DB.getUser(userId);
+    const MESSAGES = getMessages(user?.language || 'ru');
+
+    await ctx.reply(MESSAGES.generateAdminIntro, {
+      reply_markup: {
+        inline_keyboard: [[
+          { text: MESSAGES.generateOptions.basic4s, callback_data: 'gen_basic4s' }
+        ],[
+          { text: MESSAGES.generateOptions.pro4s, callback_data: 'gen_pro4s' }
+        ],[
+          { text: MESSAGES.generateOptions.bundles, callback_data: 'gen_bundles' },
+          { text: MESSAGES.generateOptions.constructor, callback_data: 'gen_constructor' }
+        ]]
+      },
+      parse_mode: 'Markdown'
     });
   });
 }

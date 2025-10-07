@@ -76,3 +76,14 @@ export function extractCodes(text) {
   return codes;
 }
 
+export function validateSoraPrompt(prompt) {
+  // Простая эвристика. Подробная модерация будет делаться через GPT фильтр.
+  if (!prompt || typeof prompt !== 'string') return { ok: false, reason: 'empty' };
+  const trimmed = prompt.trim();
+  if (trimmed.length < 5) return { ok: false, reason: 'too_short' };
+  // Базовые запреты (дублируем в LLM фильтре):
+  const banned = /(child|underage|porn|violence|terror|suicide|self-harm)/i;
+  if (banned.test(trimmed)) return { ok: false, reason: 'policy' };
+  return { ok: true };
+}
+

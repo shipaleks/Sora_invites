@@ -2,6 +2,9 @@ import DB from '../database.js';
 import { getMessages } from '../messages.js';
 import config from '../config.js';
 import admin from 'firebase-admin';
+import { enhancePromptWithCookbook, createSoraVideo, pollSoraVideo, soraQueue, Stars, SoraPricing } from '../sora.js';
+import { roundUpTo } from '../utils/helpers.js';
+import { validateSoraPrompt } from '../utils/validators.js';
 
 const db = admin.firestore();
 
@@ -708,5 +711,53 @@ Up to ${usageCount} people will register thanks to you! 🎉`
       : 'Хорошо, если передумаешь - нажми /start';
     
     await ctx.reply(msg);
+  });
+
+  // ===== Sora generation (admin test) =====
+  bot.action('gen_basic4s', async (ctx) => {
+    await ctx.answerCbQuery();
+    const userId = ctx.from.id;
+    if (userId !== config.telegram.adminId) return;
+    const user = await DB.getUser(userId);
+    const MESSAGES = getMessages(user?.language || 'ru');
+    await ctx.reply(MESSAGES.proDisclaimer + '\n\n' + MESSAGES.promptAsk, { parse_mode: 'Markdown' });
+    await DB.updateUser(userId, { sora_pending_mode: 'basic4s' });
+  });
+
+  bot.action('gen_pro4s', async (ctx) => {
+    await ctx.answerCbQuery();
+    const userId = ctx.from.id;
+    if (userId !== config.telegram.adminId) return;
+    const user = await DB.getUser(userId);
+    const MESSAGES = getMessages(user?.language || 'ru');
+    await ctx.reply(MESSAGES.proDisclaimer + '\n\n' + MESSAGES.promptAsk, { parse_mode: 'Markdown' });
+    await DB.updateUser(userId, { sora_pending_mode: 'pro4s' });
+  });
+
+  bot.action('gen_bundles', async (ctx) => {
+    await ctx.answerCbQuery();
+    const userId = ctx.from.id;
+    if (userId !== config.telegram.adminId) return;
+    const user = await DB.getUser(userId);
+    const MESSAGES = getMessages(user?.language || 'ru');
+    const kb = [
+      [{ text: `${MESSAGES.bundlesMenu.basic}: 3 → ${config.pricing.bundles.basic4s['3']}⭐`, callback_data: 'gen_bundle_basic_3' }],
+      [{ text: `${MESSAGES.bundlesMenu.basic}: 5 → ${config.pricing.bundles.basic4s['5']}⭐`, callback_data: 'gen_bundle_basic_5' }],
+      [{ text: `${MESSAGES.bundlesMenu.basic}: 10 → ${config.pricing.bundles.basic4s['10']}⭐`, callback_data: 'gen_bundle_basic_10' }],
+      [{ text: `${MESSAGES.bundlesMenu.pro}: 3 → ${config.pricing.bundles.pro4s['3']}⭐`, callback_data: 'gen_bundle_pro_3' }],
+      [{ text: `${MESSAGES.bundlesMenu.pro}: 5 → ${config.pricing.bundles.pro4s['5']}⭐`, callback_data: 'gen_bundle_pro_5' }],
+      [{ text: `${MESSAGES.bundlesMenu.pro}: 10 → ${config.pricing.bundles.pro4s['10']}⭐`, callback_data: 'gen_bundle_pro_10' }]
+    ];
+    await ctx.reply('🎁 Выбери бандл (тест, списания не будет):', { reply_markup: { inline_keyboard: kb } });
+  });
+
+  bot.action('gen_constructor', async (ctx) => {
+    await ctx.answerCbQuery();
+    const userId = ctx.from.id;
+    if (userId !== config.telegram.adminId) return;
+    const user = await DB.getUser(userId);
+    const MESSAGES = getMessages(user?.language || 'ru');
+    await ctx.reply('⚙️ Конструктор (тест): отправь в одном сообщении параметры, пример:\n"8с, Pro Max, 9:16, промпт .... [опционально ссылка на изображение]"');
+    await DB.updateUser(userId, { sora_pending_mode: 'constructor' });
   });
 }
