@@ -22,6 +22,10 @@ registerCommands(bot);
 registerCallbacks(bot);
 registerTextHandlers(bot);
 
+// Telegram Stars payment handlers
+import { registerPaymentHandlers } from './handlers/payments.js';
+registerPaymentHandlers(bot);
+
 // Запускаем планировщики
 startSchedulers(bot);
 

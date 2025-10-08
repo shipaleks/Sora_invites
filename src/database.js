@@ -522,6 +522,58 @@ export const DB = {
     
     const doc = snapshot.docs[0];
     return { id: doc.id, ...doc.data() };
+  },
+
+  // === SORA TRANSACTIONS ===
+  async createSoraTransaction(telegramId, { type, stars, mode, bundleCount, videoIds = [] }) {
+    const txRef = db.collection('sora_transactions').doc();
+    const txData = {
+      telegram_id: String(telegramId),
+      type, // 'single' | 'bundle'
+      mode, // 'basic4s' | 'pro4s' | 'constructor'
+      stars_paid: stars,
+      bundle_count: bundleCount || 1,
+      videos_generated: videoIds,
+      videos_remaining: bundleCount ? bundleCount - videoIds.length : 0,
+      status: 'paid',
+      created_at: FieldValue.serverTimestamp(),
+      telegram_charge_id: null
+    };
+    await txRef.set(txData);
+    return { id: txRef.id, ...txData };
+  },
+
+  async getSoraTransaction(txId) {
+    const doc = await db.collection('sora_transactions').doc(txId).get();
+    if (!doc.exists) return null;
+    return { id: doc.id, ...doc.data() };
+  },
+
+  async updateSoraTransaction(txId, updates) {
+    await db.collection('sora_transactions').doc(txId).update(updates);
+  },
+
+  async getUserActiveBundles(telegramId) {
+    const snapshot = await db.collection('sora_transactions')
+      .where('telegram_id', '==', String(telegramId))
+      .where('type', '==', 'bundle')
+      .where('videos_remaining', '>', 0)
+      .get();
+    
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  },
+
+  async decrementBundleRemaining(txId, videoId) {
+    const txRef = db.collection('sora_transactions').doc(txId);
+    await db.runTransaction(async (transaction) => {
+      const doc = await transaction.get(txRef);
+      if (!doc.exists) throw new Error('Transaction not found');
+      const data = doc.data();
+      transaction.update(txRef, {
+        videos_generated: [...(data.videos_generated || []), videoId],
+        videos_remaining: Math.max(0, (data.videos_remaining || 0) - 1)
+      });
+    });
   }
 };
 

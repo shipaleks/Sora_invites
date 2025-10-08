@@ -174,14 +174,29 @@ export async function pollSoraVideo(jobId) {
   throw new Error('Sora poll timeout');
 }
 
-// Telegram Stars helpers (stubs). Real Stars flow uses Bot API invoices in XTR.
+// Telegram Stars payment implementation
 export const Stars = {
-  async charge(ctx, stars, description) {
-    // For admin test we simulate success. Real impl will send invoice and await payment.
-    return { ok: true, stars };
-  },
-  async refund(ctx, stars, reason) {
-    // No official refund API for Stars; emulate via manual compensation messaging/log.
+  async sendInvoice(ctx, { title, description, payload, stars }) {
+    // Отправляем invoice с валютой XTR (Telegram Stars)
+    await ctx.replyWithInvoice({
+      title,
+      description,
+      payload, // JSON string with transaction details
+      currency: 'XTR',
+      prices: [{ label: title, amount: stars }]
+    });
     return { ok: true };
+  },
+
+  async refund(ctx, telegramChargeId, stars, reason) {
+    // Telegram Stars refund через Bot API
+    try {
+      await ctx.telegram.refundStarPayment(ctx.from.id, telegramChargeId);
+      console.log(`[Stars] Refunded ${stars}⭐ to user ${ctx.from.id}, charge: ${telegramChargeId}`);
+      return { ok: true };
+    } catch (error) {
+      console.error('[Stars] Refund failed:', error.message);
+      return { ok: false, error: error.message };
+    }
   }
 };

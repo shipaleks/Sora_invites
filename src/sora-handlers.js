@@ -48,11 +48,36 @@ export async function executeSoraGeneration(ctx, user, promptToUse, isEnhanced) 
       starsToCharge = Math.ceil((duration * rate) / 50) * 50;
     }
 
-    // 3) Списываем звёзды (эмуляция)
+    // 3) Отправляем invoice для оплаты звёздами
     if (starsToCharge > 0) {
-      await ctx.reply(MESSAGES.paymentRequested(starsToCharge), { parse_mode: 'Markdown' });
-      const charge = await Stars.charge(ctx, starsToCharge, `Sora gen ${user.sora_pending_mode}`);
-      if (!charge.ok) throw new Error('Charge failed');
+      const title = model === 'sora-2-pro' ? `Sora HD ${duration}с` : `Sora ${duration}с`;
+      const description = `Генерация видео через ${model}`;
+      const payload = JSON.stringify({
+        type: 'sora_generation',
+        mode: user.sora_pending_mode,
+        model,
+        duration,
+        stars: starsToCharge,
+        userId: user.telegram_id
+      });
+      
+      await Stars.sendInvoice(ctx, { title, description, payload, stars: starsToCharge });
+      
+      // Сохраняем промпт для использования после оплаты
+      await DB.updateUser(user.telegram_id, {
+        sora_pending_payment: {
+          prompt: promptToUse,
+          model,
+          duration,
+          width,
+          height,
+          stars: starsToCharge,
+          isEnhanced
+        }
+      });
+      
+      // Выходим - продолжим после successful_payment
+      return;
     }
 
     await ctx.reply(MESSAGES.generationQueued);
