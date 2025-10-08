@@ -262,7 +262,10 @@ async function handleSoraPrompt(ctx, user) {
 
   const basicValidation = validateSoraPrompt(text);
   if (!basicValidation.ok) {
-    return ctx.reply(MESSAGES.generationFailed('Плохой промпт. Попробуй иначе.'));
+    await DB.updateUser(user.telegram_id, { sora_pending_mode: null });
+    return ctx.reply(language === 'en' 
+      ? '🚫 This prompt violates content policy. Please try a different idea.'
+      : '🚫 Этот промпт нарушает правила контента. Попробуй другой сюжет.');
   }
 
   try {

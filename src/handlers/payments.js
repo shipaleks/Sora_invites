@@ -118,7 +118,8 @@ export function registerPaymentHandlers(bot) {
             const videoBuffer = await contentResp.arrayBuffer();
             console.log('[Sora] Video downloaded, size:', videoBuffer.byteLength, 'bytes');
             
-            const sentMsg = await ctx.replyWithDocument(
+            const sentMsg = await ctx.telegram.sendDocument(
+              userId,
               { source: Buffer.from(videoBuffer), filename: `sora_${create.id}.mp4` },
               { caption: `${MESSAGES.generationSuccess}\n\n📊 ${model}, ${duration}с, ${width}x${height}\n\n❓ Проблемы? → ${config.telegram.soraUsername}` }
             );
@@ -143,9 +144,11 @@ export function registerPaymentHandlers(bot) {
             
             // Уведомляем админа об успешной генерации + отправляем файл
             try {
+              const safeUsername = user.username ? user.username.replace(/_/g, '\\_').replace(/\./g, '\\.') : 'anonymous';
               await ctx.telegram.sendMessage(
                 config.telegram.adminId,
-                `✅ Sora видео доставлено\n\nUser: @${user.username} (${userId})\nTX: ${tx.id}\nVideo: ${create.id}\nFile ID: ${fileId || 'N/A'}\nStars: ${payment.total_amount}⭐\nMode: ${model}, ${duration}с, ${width}x${height}\nSize: ${Math.round(videoBuffer.byteLength / 1024)}KB`
+                `✅ Sora видео доставлено\\n\\nUser: @${safeUsername} (${userId})\\nTX: ${tx.id}\\nVideo: ${create.id}\\nFile ID: ${fileId || 'N/A'}\\nStars: ${payment.total_amount}⭐\\nMode: ${model}, ${duration}с, ${width}x${height}\\nSize: ${Math.round(videoBuffer.byteLength / 1024)}KB`,
+                { parse_mode: 'MarkdownV2' }
               );
               
               // Отправляем копию файла админу
@@ -164,11 +167,16 @@ export function registerPaymentHandlers(bot) {
           } catch (err) {
             console.error('Sora generation error:', err);
             
-            // AUTO-RETRY: если был усиленный промпт и произошла ошибка, пробуем оригинальный
-            const wasEnhanced = pending.isEnhanced;
-            const originalPrompt = user.sora_original_prompt;
-            
-            if (wasEnhanced && originalPrompt && (err.message.includes('stuck') || err.message.includes('500'))) {
+            // Если failed из-за policy violation - НЕ делаем retry, сразу рефанд
+            if (err.message.includes('failed: failed')) {
+              console.log('[Sora] Video rejected by OpenAI (policy violation), immediate refund');
+              // Пропускаем retry, идём сразу к рефанду
+            } else {
+              // AUTO-RETRY: если был усиленный промпт и произошла ошибка, пробуем оригинальный
+              const wasEnhanced = pending.isEnhanced;
+              const originalPrompt = user.sora_original_prompt;
+              
+              if (wasEnhanced && originalPrompt && (err.message.includes('stuck') || err.message.includes('500'))) {
               console.log('[Sora] Enhanced prompt failed, retrying with original...');
               try {
                 await ctx.reply('🔄 Усиленный промпт не сработал. Пробую оригинальный...');
@@ -204,8 +212,9 @@ export function registerPaymentHandlers(bot) {
                   return; // Успех, выходим без рефанда
                 }
               } catch (retryErr) {
-                console.error('[Sora] Retry failed:', retryErr);
-                await ctx.reply('❌ Retry тоже не удался. Делаем рефанд...');
+                  console.error('[Sora] Retry failed:', retryErr);
+                  await ctx.reply('❌ Retry тоже не удался. Делаем рефанд...');
+                }
               }
             }
             
