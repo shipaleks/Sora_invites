@@ -115,23 +115,12 @@ OUTPUT: Just the enhanced English prompt (with preserved dialogue if any), no ex
 }
 
 export async function createSoraVideo({ model, prompt, durationSeconds = 4, width, height, imageUrl }) {
-  // Определяем aspect_ratio на основе width/height
-  let aspectRatio = '16:9'; // default
-  if (width && height) {
-    if (width < height) {
-      aspectRatio = '9:16'; // vertical
-    } else if (width > height) {
-      aspectRatio = '16:9'; // horizontal
-    } else {
-      aspectRatio = '1:1'; // square
-    }
-  }
-
-  // Минимальный payload - только model и prompt
-  // API пока не поддерживает aspect_ratio, duration и другие параметры
+  // Правильные параметры по официальной документации
   const payload = {
     model, // 'sora-2' | 'sora-2-pro'
-    prompt
+    prompt,
+    seconds: durationSeconds, // number: 4, 8, or 12
+    size: width && height ? `${width}x${height}` : '1280x720' // string: "widthxheight"
   };
 
   console.log('[Sora] Creating video with payload:', JSON.stringify(payload, null, 2));
