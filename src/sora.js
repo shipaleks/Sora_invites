@@ -202,11 +202,16 @@ export async function pollSoraVideo(jobId, progressCallback) {
     if (data.status === 'queued' && data.progress === 0) {
       if (!queuedSince) {
         queuedSince = Date.now();
+        if (elapsed > 60) {
+          // Если в queued > 1 минуты, уведомляем пользователя
+          if (progressCallback) progressCallback(-1, elapsed); // -1 = special code for "waiting in queue"
+        }
       } else {
         const queuedDuration = (Date.now() - queuedSince) / 1000;
-        if (queuedDuration > 300) { // 5 минут в очереди без прогресса
+        // Увеличен таймаут до 15 минут для queued (возможно другие видео генерируются)
+        if (queuedDuration > 900) { // 15 минут в очереди
           console.error(`[Sora] Stuck in queued for ${Math.round(queuedDuration)}s, aborting`);
-          throw new Error('Video stuck in queue for 5+ minutes (OpenAI overloaded)');
+          throw new Error('Video stuck in queue for 15+ minutes (OpenAI heavily overloaded)');
         }
       }
     } else {

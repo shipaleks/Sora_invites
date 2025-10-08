@@ -96,10 +96,18 @@ export function registerPaymentHandlers(bot) {
               videos_remaining: 0
             });
             
-            // Опрашиваем с промежуточными статусами (без таймера - он неточный)
+            // Опрашиваем с промежуточными статусами
             const result = await pollSoraVideo(create.id, (progress, elapsed) => {
+              // -1 = в queued ожидании
+              if (progress === -1 && elapsed % 120 < 6) {
+                const msg = `⏳ В очереди OpenAI... (${Math.round(elapsed / 60)} мин)\n\nAPI перегружен, ждём свободного слота.`;
+                if (msg !== lastStatusMsg) {
+                  ctx.reply(msg).catch(() => {});
+                  lastStatusMsg = msg;
+                }
+              }
               // Отправляем статус при ключевых прогрессах
-              if ([40, 66, 89].includes(progress)) {
+              else if ([40, 66, 89].includes(progress)) {
                 const msg = `⏳ Прогресс: ${progress}%...`;
                 if (msg !== lastStatusMsg) {
                   ctx.reply(msg).catch(() => {});
