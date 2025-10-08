@@ -161,6 +161,7 @@ export async function pollSoraVideo(jobId, progressCallback) {
   let pollCount = 0;
   let lastProgress = 0;
   let stuckAt100Since = null;
+  let queuedSince = null;
   
   while (Date.now() - start < config.sora.pollTimeoutMs) {
     pollCount++;
@@ -195,6 +196,21 @@ export async function pollSoraVideo(jobId, progressCallback) {
       const reason = data.error?.message || data.error?.code || data.status;
       console.error(`[Sora] Video ${data.status}:`, data.error);
       throw new Error(`Sora ${data.status}: ${reason}`);
+    }
+    
+    // Защита от зависания в queued (OpenAI перегружен)
+    if (data.status === 'queued' && data.progress === 0) {
+      if (!queuedSince) {
+        queuedSince = Date.now();
+      } else {
+        const queuedDuration = (Date.now() - queuedSince) / 1000;
+        if (queuedDuration > 300) { // 5 минут в очереди без прогресса
+          console.error(`[Sora] Stuck in queued for ${Math.round(queuedDuration)}s, aborting`);
+          throw new Error('Video stuck in queue for 5+ minutes (OpenAI overloaded)');
+        }
+      }
+    } else {
+      queuedSince = null;
     }
     
     // Защита от зависания на 100%

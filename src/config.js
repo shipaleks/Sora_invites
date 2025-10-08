@@ -32,8 +32,8 @@ export default {
 
   sora: {
     openaiApiKey: process.env.OPENAI_API_KEY,
-    // Конкурентность генерации видео (воркеры)
-    concurrency: parseInt(process.env.SORA_CONCURRENCY || '2'),
+    // Конкурентность генерации видео (воркеры) - снижена до 1 из-за перегрузки OpenAI API
+    concurrency: parseInt(process.env.SORA_CONCURRENCY || '1'),
     // Таймауты (Sora генерация может занимать 3-5 минут)
     createTimeoutMs: parseInt(process.env.SORA_CREATE_TIMEOUT_MS || '300000'), // 5 min
     pollIntervalMs: parseInt(process.env.SORA_POLL_INTERVAL_MS || '5000'), // 5s
