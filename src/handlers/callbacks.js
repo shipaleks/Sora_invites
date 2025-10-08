@@ -25,9 +25,11 @@ export function registerCallbacks(bot) {
       `${language === 'ru' ? '✅ Язык установлен: Русский' : '✅ Language set: English'}\n\n${MESSAGES.welcome}`,
       {
         reply_markup: {
-          inline_keyboard: [[
-            { text: MESSAGES.buttons.wantInvite, callback_data: 'want_invite' }
-          ]]
+          inline_keyboard: [
+            [{ text: MESSAGES.buttons.wantInvite, callback_data: 'want_invite' }],
+            [{ text: MESSAGES.buttons.shareCode, callback_data: 'share_code' }],
+            [{ text: MESSAGES.buttons.generateVideo, callback_data: 'start_generate' }]
+          ]
         },
         parse_mode: 'Markdown'
       }
