@@ -118,6 +118,8 @@ export async function createSoraVideo({ model, prompt, durationSeconds = 4, widt
     image_reference_url: imageUrl || undefined
   };
 
+  console.log('[Sora] Creating video with payload:', JSON.stringify(payload, null, 2));
+
   const resp = await fetch(`${OPENAI_BASE}/videos`, {
     method: 'POST',
     headers: {
@@ -130,16 +132,21 @@ export async function createSoraVideo({ model, prompt, durationSeconds = 4, widt
 
   if (!resp.ok) {
     const text = await resp.text().catch(() => '');
+    console.error('[Sora] Create failed:', resp.status, text);
     throw new Error(`Sora create failed: ${resp.status} ${text}`);
   }
 
   const data = await resp.json();
+  console.log('[Sora] Create response:', JSON.stringify(data, null, 2));
   return data; // expect { id, status, ... }
 }
 
 export async function pollSoraVideo(jobId) {
   const start = Date.now();
+  let pollCount = 0;
   while (Date.now() - start < config.sora.pollTimeoutMs) {
+    pollCount++;
+    console.log(`[Sora] Polling job ${jobId}, attempt ${pollCount}, elapsed ${Math.round((Date.now() - start) / 1000)}s`);
     const resp = await fetch(`${OPENAI_BASE}/videos/${jobId}`, {
       headers: {
         'Authorization': `Bearer ${config.sora.openaiApiKey}`
@@ -147,13 +154,16 @@ export async function pollSoraVideo(jobId) {
     });
     if (!resp.ok) {
       const text = await resp.text().catch(() => '');
+      console.error('[Sora] Poll failed:', resp.status, text);
       throw new Error(`Sora poll failed: ${resp.status} ${text}`);
     }
     const data = await resp.json();
+    console.log(`[Sora] Poll response (attempt ${pollCount}):`, JSON.stringify(data, null, 2));
     if (data.status === 'succeeded') return data;
     if (data.status === 'failed' || data.status === 'rejected') throw new Error(`Sora failed: ${data.status}`);
     await new Promise(r => setTimeout(r, config.sora.pollIntervalMs));
   }
+  console.error(`[Sora] Poll timeout after ${pollCount} attempts, ${Math.round((Date.now() - start) / 1000)}s`);
   throw new Error('Sora poll timeout');
 }
 
