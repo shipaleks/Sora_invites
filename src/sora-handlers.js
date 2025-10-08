@@ -55,8 +55,8 @@ export async function executeSoraGeneration(ctx, user, promptToUse, isEnhanced) 
 
     await ctx.reply(MESSAGES.generationQueued);
 
-    // 4) Пускаем в очередь на генерацию
-    await soraQueue.enqueue(async () => {
+    // 4) Пускаем в очередь на генерацию (НЕ ждём завершения, чтобы не упасть по handlerTimeout)
+    soraQueue.enqueue(async () => {
       try {
         await ctx.reply(MESSAGES.generationStarted);
         const create = await createSoraVideo({ model, prompt: promptToUse, durationSeconds: duration, width, height });
