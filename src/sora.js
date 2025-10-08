@@ -209,9 +209,9 @@ export async function pollSoraVideo(jobId, progressCallback) {
           }
         }
         
-        if (stuckDuration > 300) { // 5 минут на 100%
+        if (stuckDuration > 600) { // 10 минут на 100%
           console.error(`[Sora] Stuck at 100% for ${Math.round(stuckDuration)}s, aborting`);
-          throw new Error('Video stuck at 100% progress for 5+ minutes');
+          throw new Error('Video stuck at 100% progress for 10+ minutes');
         }
       }
     } else {

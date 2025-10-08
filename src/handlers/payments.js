@@ -164,6 +164,51 @@ export function registerPaymentHandlers(bot) {
           } catch (err) {
             console.error('Sora generation error:', err);
             
+            // AUTO-RETRY: если был усиленный промпт и произошла ошибка, пробуем оригинальный
+            const wasEnhanced = pending.isEnhanced;
+            const originalPrompt = user.sora_original_prompt;
+            
+            if (wasEnhanced && originalPrompt && (err.message.includes('stuck') || err.message.includes('500'))) {
+              console.log('[Sora] Enhanced prompt failed, retrying with original...');
+              try {
+                await ctx.reply('🔄 Усиленный промпт не сработал. Пробую оригинальный...');
+                const retryCreate = await createSoraVideo({ model, prompt: originalPrompt, durationSeconds: duration, width, height });
+                const retryResult = await pollSoraVideo(retryCreate.id, progressCallback);
+                
+                const retryContentResp = await fetch(`https://api.openai.com/v1/videos/${retryCreate.id}/content`, {
+                  headers: { 'Authorization': `Bearer ${config.sora.openaiApiKey}` }
+                });
+                if (retryContentResp.ok) {
+                  const retryBuffer = await retryContentResp.arrayBuffer();
+                  const retrySentMsg = await ctx.replyWithDocument(
+                    { source: Buffer.from(retryBuffer), filename: `sora_${retryCreate.id}.mp4` },
+                    { caption: `${MESSAGES.generationSuccess} (retry с оригинальным промптом)\n\n📊 ${model}, ${duration}с, ${width}x${height}\n\n❓ Проблемы? → ${config.telegram.soraUsername}` }
+                  );
+                  
+                  await DB.updateSoraTransaction(tx.id, {
+                    videos_generated: [retryCreate.id],
+                    telegram_file_ids: [retrySentMsg.document?.file_id].filter(Boolean),
+                    delivery_confirmed: true,
+                    retry_count: 1
+                  });
+                  
+                  await ctx.telegram.sendMessage(config.telegram.adminId, 
+                    `✅ Sora retry успешен\n\nUser: @${user.username}\nTX: ${tx.id}\nRetry video: ${retryCreate.id}\nOriginal failed, used fallback prompt`
+                  );
+                  
+                  // Отправляем копию админу
+                  if (retrySentMsg.document?.file_id) {
+                    await ctx.telegram.sendDocument(config.telegram.adminId, retrySentMsg.document.file_id);
+                  }
+                  
+                  return; // Успех, выходим без рефанда
+                }
+              } catch (retryErr) {
+                console.error('[Sora] Retry failed:', retryErr);
+                await ctx.reply('❌ Retry тоже не удался. Делаем рефанд...');
+              }
+            }
+            
             // Рефанд при ошибке
             try {
               await ctx.telegram.refundStarPayment(userId, payment.telegram_payment_charge_id);
