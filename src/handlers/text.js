@@ -59,6 +59,9 @@ export function registerTextHandlers(bot) {
       if (text === '/adminstat') {
         return handleAdminStat(ctx);
       }
+      if (text === '/announcevideos') {
+        return handleAnnounceVideos(ctx, bot);
+      }
       // /refunduser теперь в commands.js
       // Остальные команды админа (start, stats, help, language, generate, refunduser) - пропускаем в commands.js
     }
@@ -1010,3 +1013,165 @@ async function handleBroadcast(ctx, text, bot) {
 }
 
 // handleRefundUser moved to commands.js as bot.command('refunduser')
+
+async function handleAnnounceVideos(ctx, bot) {
+  await ctx.reply('🚀 Запускаю targeted рассылку о генерации видео...');
+  
+  const allUsers = await DB.getAllUsers();
+  
+  // Сегментация пользователей
+  const withInvites = allUsers.filter(u => 
+    (u.status === 'received' || u.status === 'completed') && !u.is_banned
+  );
+  const inQueue = allUsers.filter(u => 
+    u.status === 'waiting' && !u.is_banned
+  );
+  const others = allUsers.filter(u => 
+    !['received', 'completed', 'waiting'].includes(u.status) && !u.is_banned
+  );
+  
+  let sent = { withInvites: 0, inQueue: 0, others: 0 };
+  let failed = 0;
+  
+  // Сообщение для получивших инвайт
+  const msgWithInvites = {
+    ru: `🎬 **Новинка: Генерация видео в Sora!**
+
+✨ Теперь можешь создавать видео прямо в боте!
+
+**Почему это круто:**
+• 💎 Доступ к **Sora 2 Pro** (у OpenAI $100/мес!)
+• 🎨 **Без вотермарки** (в обычном Sora есть)
+• ⚙️ **Кастомизация**: длительность, качество, ориентация
+• ⚡️ Быстро: 1-3 минуты
+
+**Цены:**
+• Обычный: 100⭐
+• HD (Pro): 250⭐
+• Кастом: от 100⭐
+
+Даже с инвайтом у тебя нет Pro подписки — попробуй сейчас!
+
+👉 /generate`,
+    en: `🎬 **New: Sora Video Generation!**
+
+✨ Now you can create videos right in the bot!
+
+**Why it's awesome:**
+• 💎 Access to **Sora 2 Pro** (OpenAI charges $100/mo!)
+• 🎨 **No watermark** (regular Sora has it)
+• ⚙️ **Customization**: duration, quality, orientation
+• ⚡️ Fast: 1-3 minutes
+
+**Pricing:**
+• Basic: 100⭐
+• HD (Pro): 250⭐
+• Custom: from 100⭐
+
+Even with invite, you don't have Pro subscription — try now!
+
+👉 /generate`
+  };
+  
+  // Сообщение для ожидающих
+  const msgInQueue = {
+    ru: `🎬 **Не хочешь ждать? Генерируй видео сейчас!**
+
+Пока ждёшь инвайт, можешь создать видео с Sora AI!
+
+**Доступно:**
+• 💎 Sora 2 Pro (обычно $100/мес)
+• 🎨 Без вотермарки
+• ⚙️ Кастомизация параметров
+
+**Цены:** от 100⭐
+
+Твоя позиция в очереди сохранится — это просто дополнительная опция!
+
+👉 /generate`,
+    en: `🎬 **Don't want to wait? Generate video now!**
+
+While waiting for invite, you can create videos with Sora AI!
+
+**Available:**
+• 💎 Sora 2 Pro (usually $100/mo)
+• 🎨 No watermark
+• ⚙️ Custom parameters
+
+**Pricing:** from 100⭐
+
+Your queue position is saved — this is just an extra option!
+
+👉 /generate`
+  };
+  
+  // Сообщение для остальных
+  const msgOthers = {
+    ru: `🎬 **Новинка: Генерация видео в Sora!**
+
+Создавай AI-видео прямо в Telegram!
+
+• 💎 Sora 2 Pro ($100/мес у OpenAI)
+• 🎨 Без вотермарки
+• ⚡️ 1-3 минуты
+
+От 100⭐
+
+👉 /generate`,
+    en: `🎬 **New: Sora Video Generation!**
+
+Create AI videos right in Telegram!
+
+• 💎 Sora 2 Pro ($100/mo at OpenAI)
+• 🎨 No watermark
+• ⚡️ 1-3 minutes
+
+From 100⭐
+
+👉 /generate`
+  };
+  
+  // Рассылка с задержкой
+  for (const user of withInvites) {
+    try {
+      const msg = user.language === 'en' ? msgWithInvites.en : msgWithInvites.ru;
+      await bot.telegram.sendMessage(user.telegram_id, msg, { parse_mode: 'Markdown' });
+      sent.withInvites++;
+      await new Promise(r => setTimeout(r, 50));
+    } catch (error) {
+      failed++;
+      console.error(`Announce failed for ${user.telegram_id}:`, error.message);
+    }
+  }
+  
+  for (const user of inQueue) {
+    try {
+      const msg = user.language === 'en' ? msgInQueue.en : msgInQueue.ru;
+      await bot.telegram.sendMessage(user.telegram_id, msg, { parse_mode: 'Markdown' });
+      sent.inQueue++;
+      await new Promise(r => setTimeout(r, 50));
+    } catch (error) {
+      failed++;
+      console.error(`Announce failed for ${user.telegram_id}:`, error.message);
+    }
+  }
+  
+  for (const user of others) {
+    try {
+      const msg = user.language === 'en' ? msgOthers.en : msgOthers.ru;
+      await bot.telegram.sendMessage(user.telegram_id, msg, { parse_mode: 'Markdown' });
+      sent.others++;
+      await new Promise(r => setTimeout(r, 50));
+    } catch (error) {
+      failed++;
+      console.error(`Announce failed for ${user.telegram_id}:`, error.message);
+    }
+  }
+  
+  return ctx.reply(`✅ Рассылка завершена!\n\n` +
+    `С инвайтами: ${sent.withInvites}\n` +
+    `В очереди: ${sent.inQueue}\n` +
+    `Остальные: ${sent.others}\n` +
+    `Ошибок: ${failed}\n\n` +
+    `Всего отправлено: ${sent.withInvites + sent.inQueue + sent.others}`);
+}
