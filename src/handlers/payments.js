@@ -232,7 +232,16 @@ export function registerPaymentHandlers(bot) {
               if (!refundData.ok) {
                 throw new Error(`Refund failed: ${JSON.stringify(refundData)}`);
               }
-              await ctx.reply(`${MESSAGES.generationFailed(err.message || 'unknown')}\n\n${MESSAGES.paymentRefunded(payment.total_amount)}\n\n🔄 Попробуй ещё раз: /generate`);
+              
+              // Более информативное сообщение об ошибке
+              let errorMsg = MESSAGES.generationFailed(err.message || 'unknown');
+              if (err.message && err.message.includes('failed: failed')) {
+                errorMsg = user?.language === 'en'
+                  ? '🚫 **Content Rejected**\n\nOpenAI rejected this video (policy violation).\n\nTry a different prompt without offensive/explicit content.'
+                  : '🚫 **Контент отклонён**\n\nOpenAI отклонил это видео (нарушение правил).\n\nПопробуй другой промпт без оскорбительного/откровенного контента.';
+              }
+              
+              await ctx.reply(`${errorMsg}\n\n${MESSAGES.paymentRefunded(payment.total_amount)}\n\n🔄 Попробуй ещё раз: /generate`);
               
               // Уведомляем админа об ошибке и рефанде
               await ctx.telegram.sendMessage(

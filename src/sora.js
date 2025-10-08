@@ -70,16 +70,23 @@ DIALOGUE: Keep original language if dialogue exists
 SOUND: Background audio cues (optional)
 
 SAFETY HANDLING:
-- If input is IMPOSSIBLE to sanitize (extreme violence, CP, terrorism) → return "POLICY_VIOLATION|HARD"
-- If input has MINOR issues you CAN fix (slurs, bullying, mild violence) → return "POLICY_WARNING|" + your sanitized prompt
+- If input is IMPOSSIBLE to sanitize (extreme violence, CP, terrorism, explicit sexual content) → return "POLICY_VIOLATION|HARD"
+- If input has issues you CAN fix → return "POLICY_WARNING|" + your sanitized prompt
 - If input is CLEAN → just return the enhanced prompt
+
+CRITICAL RULES FOR DIALOGUE:
+- REMOVE all profanity, slurs, sexual language from dialogue completely
+- If dialogue is offensive, either OMIT it or replace with "[non-verbal tension]"
+- NEVER include offensive words in any part of the prompt, even as "overheard rumors"
+- Sora API will reject ANY explicit language
 
 EXAMPLES OF SANITIZATION:
 - "негр" → "dark-skinned person"
 - "жирная баба" → "large woman"  
-- "Зеленский нюхает кокаин" → "man in green military uniform with white powder on nose"
-- "школьники избивают одноклассника" → "tense standoff between students in hallway"
-- Offensive slurs → neutral descriptors
+- "Зеленский нюхает кокаин" → "official in green uniform, white substance on nose"
+- "школьники избивают" → "tense standoff between students"
+- Dialogue with profanity → REMOVE dialogue entirely or use "[tense silence]"
+- Sexual content → romantic tension WITHOUT explicit references
 
 OUTPUT FORMAT:
 - If HARD violation: "POLICY_VIOLATION|HARD"
@@ -185,7 +192,9 @@ export async function pollSoraVideo(jobId, progressCallback) {
     
     if (data.status === 'completed') return data;
     if (data.status === 'failed' || data.status === 'rejected' || data.status === 'canceled') {
-      throw new Error(`Sora failed: ${data.status}`);
+      const reason = data.error?.message || data.error?.code || data.status;
+      console.error(`[Sora] Video ${data.status}:`, data.error);
+      throw new Error(`Sora ${data.status}: ${reason}`);
     }
     
     // Защита от зависания на 100%
