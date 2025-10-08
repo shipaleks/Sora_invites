@@ -60,10 +60,21 @@ export async function executeSoraGeneration(ctx, user, promptToUse, isEnhanced) 
       try {
         await ctx.reply(MESSAGES.generationStarted);
         const create = await createSoraVideo({ model, prompt: promptToUse, durationSeconds: duration, width, height });
+        console.log('[Sora] Video created, ID:', create.id);
         const result = await pollSoraVideo(create.id);
-        const videoUrl = result.output_url || result.url || result.video?.url;
-        if (!videoUrl) throw new Error('No video URL in result');
-        await ctx.replyWithVideo({ url: videoUrl }, { caption: MESSAGES.generationSuccess });
+        console.log('[Sora] Video completed, downloading content...');
+        
+        // Загружаем контент через /videos/{id}/content
+        const contentResp = await fetch(`https://api.openai.com/v1/videos/${create.id}/content`, {
+          headers: { 'Authorization': `Bearer ${config.sora.openaiApiKey}` }
+        });
+        if (!contentResp.ok) {
+          throw new Error(`Content download failed: ${contentResp.status}`);
+        }
+        const videoBuffer = await contentResp.arrayBuffer();
+        console.log('[Sora] Video downloaded, size:', videoBuffer.byteLength, 'bytes');
+        
+        await ctx.replyWithVideo({ source: Buffer.from(videoBuffer) }, { caption: MESSAGES.generationSuccess });
       } catch (err) {
         console.error('Sora generation error:', err);
         await ctx.reply(MESSAGES.generationFailed(err.message || 'unknown'));

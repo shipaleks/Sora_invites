@@ -110,12 +110,23 @@ WRITING GUIDELINES:
 }
 
 export async function createSoraVideo({ model, prompt, durationSeconds = 4, width, height, imageUrl }) {
+  // Определяем aspect_ratio на основе width/height
+  let aspectRatio = '16:9'; // default
+  if (width && height) {
+    if (width < height) {
+      aspectRatio = '9:16'; // vertical
+    } else if (width > height) {
+      aspectRatio = '16:9'; // horizontal
+    } else {
+      aspectRatio = '1:1'; // square
+    }
+  }
+
   const payload = {
     model, // 'sora-2' | 'sora-2-pro'
     prompt,
-    seconds: String(durationSeconds), // API expects string "4", "8", or "12"
-    size: width && height ? `${width}x${height}` : undefined,
-    image_reference_url: imageUrl || undefined
+    duration: durationSeconds, // number: 4, 8, or 12
+    aspect_ratio: aspectRatio // string: "16:9", "9:16", "1:1"
   };
 
   console.log('[Sora] Creating video with payload:', JSON.stringify(payload, null, 2));
@@ -159,8 +170,10 @@ export async function pollSoraVideo(jobId) {
     }
     const data = await resp.json();
     console.log(`[Sora] Poll response (attempt ${pollCount}):`, JSON.stringify(data, null, 2));
-    if (data.status === 'succeeded') return data;
-    if (data.status === 'failed' || data.status === 'rejected') throw new Error(`Sora failed: ${data.status}`);
+    if (data.status === 'completed') return data;
+    if (data.status === 'failed' || data.status === 'rejected' || data.status === 'canceled') {
+      throw new Error(`Sora failed: ${data.status}`);
+    }
     await new Promise(r => setTimeout(r, config.sora.pollIntervalMs));
   }
   console.error(`[Sora] Poll timeout after ${pollCount} attempts, ${Math.round((Date.now() - start) / 1000)}s`);
