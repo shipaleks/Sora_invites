@@ -154,7 +154,10 @@ export function registerCallbacks(bot) {
     }
     
     // Универсальный промпт для всех
-    await ctx.reply(MESSAGES.shareCodePrompt(user?.language || 'ru'), {
+    const promptText = typeof MESSAGES.shareCodePrompt === 'function' 
+      ? MESSAGES.shareCodePrompt(user?.language || 'ru')
+      : MESSAGES.shareCodePrompt;
+    await ctx.reply(promptText, {
       parse_mode: 'Markdown'
     });
     
