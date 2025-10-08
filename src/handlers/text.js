@@ -59,10 +59,8 @@ export function registerTextHandlers(bot) {
       if (text === '/adminstat') {
         return handleAdminStat(ctx);
       }
-      if (text.startsWith('/refunduser ')) {
-        return handleRefundUser(ctx, text);
-      }
-      // Остальные команды админа (start, stats, help, language) - пропускаем в commands.js
+      // /refunduser теперь в commands.js
+      // Остальные команды админа (start, stats, help, language, generate, refunduser) - пропускаем в commands.js
     }
     
     // Если это команда - пропускаем (обрабатывается в commands.js)
@@ -985,77 +983,4 @@ async function handleBroadcast(ctx, text, bot) {
   return ctx.reply(`✅ Готово!\nУспешно: ${successCount}\nОшибок: ${failCount}`);
 }
 
-async function handleRefundUser(ctx, text) {
-  console.log('[Refund] Command received:', text);
-  
-  // Формат: /refunduser @username TX_ID
-  const parts = text.replace('/refunduser ', '').trim().split(/\s+/);
-  
-  if (parts.length < 2) {
-    return ctx.reply('❌ Формат: /refunduser @username TX_ID\nПример: /refunduser @user123 abc123xyz');
-  }
-  
-  const username = parts[0];
-  const txId = parts[1];
-  
-  console.log('[Refund] Processing:', { username, txId });
-  
-  try {
-    const user = await DB.getUserByUsername(username);
-    if (!user) {
-      return ctx.reply(`❌ Пользователь ${username} не найден`);
-    }
-    
-    console.log('[Refund] User found:', user.telegram_id);
-    
-    const tx = await DB.getSoraTransaction(txId);
-    if (!tx) {
-      return ctx.reply(`❌ Транзакция ${txId} не найдена`);
-    }
-    
-    console.log('[Refund] Transaction found:', tx);
-    
-    if (tx.status === 'refunded') {
-      return ctx.reply(`⚠️ Эта транзакция уже была возвращена ранее`);
-    }
-    
-    if (!tx.telegram_charge_id) {
-      return ctx.reply(`❌ Charge ID не найден в транзакции. Рефанд невозможен.\n\nTX data: ${JSON.stringify(tx, null, 2)}`);
-    }
-    
-    await ctx.reply(`⏳ Выполняю рефанд ${tx.stars_paid}⭐ для @${user.username}...`);
-    
-    // Делаем рефанд
-    console.log('[Refund] Calling refundStarPayment:', {
-      userId: user.telegram_id,
-      chargeId: tx.telegram_charge_id
-    });
-    
-    await ctx.telegram.refundStarPayment(parseInt(user.telegram_id), tx.telegram_charge_id);
-    
-    console.log('[Refund] Refund successful');
-    
-    // Обновляем статус
-    await DB.updateSoraTransaction(txId, {
-      status: 'refunded',
-      refunded_by_admin: true,
-      refunded_at: new Date()
-    });
-    
-    // Уведомляем пользователя
-    try {
-      await ctx.telegram.sendMessage(
-        parseInt(user.telegram_id),
-        `↩️ Возврат ${tx.stars_paid}⭐\n\nТранзакция: ${txId}\n\nТвои звёзды возвращены администратором.`
-      );
-    } catch (e) {
-      console.error('[Refund] User notification failed:', e.message);
-    }
-    
-    return ctx.reply(`✅ Рефанд выполнен\n\nUser: @${user.username} (${user.telegram_id})\nTX: ${txId}\nStars: ${tx.stars_paid}⭐\nCharge: ${tx.telegram_charge_id}`);
-    
-  } catch (error) {
-    console.error('[Refund] Error:', error);
-    return ctx.reply(`❌ Ошибка рефанда: ${error.message}\n\nStack: ${error.stack}`);
-  }
-}
+// handleRefundUser moved to commands.js as bot.command('refunduser')
