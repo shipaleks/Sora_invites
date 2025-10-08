@@ -75,6 +75,7 @@ export function registerPaymentHandlers(bot) {
         
         soraQueue.enqueue(async () => {
           try {
+            let lastStatusMsg = null;
             await ctx.reply(MESSAGES.generationStarted(eta));
             const create = await createSoraVideo({ model, prompt, durationSeconds: duration, width, height });
             console.log('[Sora] Video created, ID:', create.id);
@@ -85,7 +86,17 @@ export function registerPaymentHandlers(bot) {
               videos_remaining: 0
             });
             
-            const result = await pollSoraVideo(create.id);
+            // Опрашиваем с промежуточными статусами
+            const result = await pollSoraVideo(create.id, (progress, elapsed) => {
+              // Отправляем статус каждые 60 секунд или при ключевых прогрессах
+              if (elapsed % 60 < 6 || [40, 66, 89, 100].includes(progress)) {
+                const msg = `⏳ Прогресс: ${progress}%... (${Math.round(elapsed / 60)} мин)`;
+                if (msg !== lastStatusMsg) {
+                  ctx.reply(msg).catch(() => {});
+                  lastStatusMsg = msg;
+                }
+              }
+            });
             console.log('[Sora] Video completed, downloading content...');
             
             const contentResp = await fetch(`https://api.openai.com/v1/videos/${create.id}/content`, {

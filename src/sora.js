@@ -146,12 +146,17 @@ export async function createSoraVideo({ model, prompt, durationSeconds = 4, widt
   return data; // expect { id, status, ... }
 }
 
-export async function pollSoraVideo(jobId) {
+export async function pollSoraVideo(jobId, progressCallback) {
   const start = Date.now();
   let pollCount = 0;
+  let lastProgress = 0;
+  let stuckAt100Since = null;
+  
   while (Date.now() - start < config.sora.pollTimeoutMs) {
     pollCount++;
-    console.log(`[Sora] Polling job ${jobId}, attempt ${pollCount}, elapsed ${Math.round((Date.now() - start) / 1000)}s`);
+    const elapsed = Math.round((Date.now() - start) / 1000);
+    console.log(`[Sora] Polling job ${jobId}, attempt ${pollCount}, elapsed ${elapsed}s`);
+    
     const resp = await fetch(`${OPENAI_BASE}/videos/${jobId}`, {
       headers: {
         'Authorization': `Bearer ${config.sora.openaiApiKey}`
@@ -163,11 +168,39 @@ export async function pollSoraVideo(jobId) {
       throw new Error(`Sora poll failed: ${resp.status} ${text}`);
     }
     const data = await resp.json();
-    console.log(`[Sora] Poll response (attempt ${pollCount}):`, JSON.stringify(data, null, 2));
+    
+    // Логируем только при изменении прогресса или каждые 10 попыток
+    if (data.progress !== lastProgress || pollCount % 10 === 0) {
+      console.log(`[Sora] Poll response (attempt ${pollCount}):`, JSON.stringify(data, null, 2));
+    }
+    
+    // Отправляем callback для промежуточных статусов
+    if (progressCallback && data.progress !== lastProgress && data.progress > 0) {
+      progressCallback(data.progress, elapsed);
+    }
+    lastProgress = data.progress;
+    
     if (data.status === 'completed') return data;
     if (data.status === 'failed' || data.status === 'rejected' || data.status === 'canceled') {
       throw new Error(`Sora failed: ${data.status}`);
     }
+    
+    // Защита от зависания на 100%
+    if (data.progress === 100 && data.status === 'in_progress') {
+      if (!stuckAt100Since) {
+        stuckAt100Since = Date.now();
+        console.log('[Sora] Reached 100% but still in_progress, monitoring...');
+      } else {
+        const stuckDuration = (Date.now() - stuckAt100Since) / 1000;
+        if (stuckDuration > 180) { // 3 минуты на 100%
+          console.error(`[Sora] Stuck at 100% for ${Math.round(stuckDuration)}s, aborting`);
+          throw new Error('Video stuck at 100% progress for 3+ minutes');
+        }
+      }
+    } else {
+      stuckAt100Since = null;
+    }
+    
     await new Promise(r => setTimeout(r, config.sora.pollIntervalMs));
   }
   console.error(`[Sora] Poll timeout after ${pollCount} attempts, ${Math.round((Date.now() - start) / 1000)}s`);
