@@ -275,28 +275,51 @@ async function handleSoraPrompt(ctx, user) {
     console.log('[Sora] Enhanced prompt length:', enhanced.length);
     
     // Проверка на policy violation
-    if (enhanced.includes('POLICY_VIOLATION')) {
+    if (enhanced.startsWith('POLICY_VIOLATION')) {
       await DB.updateUser(user.telegram_id, { sora_pending_mode: null });
       return ctx.reply(language === 'en' 
-        ? '🚫 This prompt violates content policy. Please try a different idea.'
-        : '🚫 Этот промпт нарушает правила контента. Попробуй другой сюжет.');
+        ? '🚫 This prompt violates content policy and cannot be sanitized. Please try a completely different idea.'
+        : '🚫 Этот промпт сильно нарушает правила и не может быть исправлен. Попробуй совершенно другой сюжет.');
+    }
+    
+    // Проверка на предупреждение (GPT исправил проблемный контент)
+    let cleanedPrompt = enhanced;
+    let hadWarning = false;
+    if (enhanced.startsWith('POLICY_WARNING|')) {
+      hadWarning = true;
+      cleanedPrompt = enhanced.replace('POLICY_WARNING|', '');
     }
     
     // Сохраняем оба варианта для выбора
     await DB.updateUser(user.telegram_id, { 
       sora_original_prompt: text,
-      sora_enhanced_prompt: enhanced
+      sora_enhanced_prompt: cleanedPrompt,
+      sora_had_warning: hadWarning
     });
-    console.log('[Sora] Saved prompts to DB, sending choice buttons...');
+    console.log('[Sora] Saved prompts to DB, sending choice buttons... (warning:', hadWarning, ')');
     
-    const sent = await ctx.reply(MESSAGES.promptEnhanceChoice, {
-      parse_mode: 'Markdown',
-      reply_markup: {
-        inline_keyboard: [[
+    const choiceText = hadWarning
+      ? (language === 'en' 
+        ? `⚠️ **Content Warning**\n\nYour prompt contains elements that may violate OpenAI policy. We've created a safer version.\n\n**Options:**\n• ✨ Safe version (recommended) — high success rate\n• 📝 Original — may be rejected by Sora\n• ✏️ Rewrite prompt completely\n\nChoose:`
+        : `⚠️ **Предупреждение**\n\nТвой промпт может нарушать правила OpenAI. Мы создали безопасную версию.\n\n**Варианты:**\n• ✨ Безопасная версия (рекомендуем) — высокий шанс успеха\n• 📝 Оригинал — может быть отклонён Sora\n• ✏️ Написать новый промпт\n\nВыбери:`)
+      : MESSAGES.promptEnhanceChoice;
+    
+    const buttons = hadWarning
+      ? [[
+          { text: '✨ Безопасная версия', callback_data: 'sora_use_enhanced' }
+        ],[
+          { text: '📝 Рискнуть оригиналом', callback_data: 'sora_use_original' }
+        ],[
+          { text: '✏️ Написать новый', callback_data: 'sora_rewrite' }
+        ]]
+      : [[
           { text: '✨ Усиленный', callback_data: 'sora_use_enhanced' },
           { text: '📝 Оригинал', callback_data: 'sora_use_original' }
-        ]]
-      }
+        ]];
+    
+    const sent = await ctx.reply(choiceText, {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: buttons }
     });
     console.log('[Sora] Choice buttons sent successfully, message_id:', sent.message_id);
   } catch (error) {

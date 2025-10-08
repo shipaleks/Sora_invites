@@ -48,40 +48,43 @@ export class SoraQueue {
 export const soraQueue = new SoraQueue(config.sora.concurrency);
 
 export async function enhancePromptWithCookbook(userPrompt, language = 'ru') {
-  // Simplified prompt enhancement - avoid overly technical details that cause Sora API errors
-  const enhancementPrompt = `You are a Sora 2 video prompt expert. Transform the user's idea into a clear, cinematic Sora 2 prompt in ENGLISH.
+  // Enhanced prompt creation with auto-sanitization for policy compliance
+  const enhancementPrompt = `You are a Sora 2 video prompt expert. Your job: transform user's idea into a clear, cinematic Sora 2 prompt in ENGLISH while making it POLICY-COMPLIANT.
 
-USER INPUT (translate scene/action to English, but PRESERVE any dialogue in original language):
+USER INPUT (can be Russian; translate to English but preserve dialogue):
 "${userPrompt}"
 
-TASK: Write a 80-150 word Sora 2 prompt in ENGLISH with:
+YOUR TASK:
+1. CHECK if input contains problematic content (violence, hate speech, bullying, sexual content, self-harm, illegal acts, slurs, offensive stereotypes)
+2. If problematic: REWRITE to make it acceptable while keeping the core creative intent
+   - Replace slurs/offensive terms with neutral descriptors
+   - Remove graphic violence/bullying → suggest tension/conflict instead
+   - Remove sexual content → suggest romantic/aesthetic moments
+   - Remove illegal acts → suggest legal alternatives or omit
+3. Write enhanced 80-150 word prompt in ENGLISH with structure:
 
-1. STYLE (1 sentence): Visual style, film aesthetic, mood
-   Example: "Cinematic documentary style, 35mm film with natural flares, warm color grade"
+STYLE: Visual style, film aesthetic, mood
+SCENE: Location, subjects, atmosphere, lighting
+CAMERA & ACTION: Framing, movement, what happens (4-8 seconds)
+DIALOGUE: Keep original language if dialogue exists
+SOUND: Background audio cues (optional)
 
-2. SCENE (2-3 sentences): Location, subject, atmosphere, lighting
-   Example: "A cozy living room at golden hour. A playful cat dances on wooden floor near a window. Warm sunlight streams through, casting soft shadows."
+SAFETY HANDLING:
+- If input is IMPOSSIBLE to sanitize (extreme violence, CP, terrorism) → return "POLICY_VIOLATION|HARD"
+- If input has MINOR issues you CAN fix (slurs, bullying, mild violence) → return "POLICY_WARNING|" + your sanitized prompt
+- If input is CLEAN → just return the enhanced prompt
 
-3. CAMERA & ACTION (2-3 sentences): Framing, movement, what happens
-   Example: "Medium shot, slow dolly-in. Camera at cat-eye level. The cat spins twice, pauses, looks at camera with a playful expression."
+EXAMPLES OF SANITIZATION:
+- "негр" → "dark-skinned person"
+- "жирная баба" → "large woman"  
+- "Зеленский нюхает кокаин" → "man in green military uniform with white powder on nose"
+- "школьники избивают одноклассника" → "tense standoff between students in hallway"
+- Offensive slurs → neutral descriptors
 
-4. DIALOGUE (if present): Keep original language (Russian/English)
-   Example: Dialogue: Character says "Привет, как дела?"
-
-5. SOUND (1 short phrase, optional): Background audio cues
-   Example: "Soft paw taps on wood, distant music"
-
-CRITICAL SAFETY CHECK:
-- REJECT if input contains: graphic violence, sexual content, children in unsafe situations, self-harm, hate speech, illegal activities
-- If unsafe, return EXACTLY: "POLICY_VIOLATION"
-- Otherwise proceed with enhancement
-
-RULES:
-- Keep it SIMPLE and CLEAR - avoid ultra-technical jargon
-- ONE main action that fits 4-8 seconds
-- Preserve dialogue in original language
-
-OUTPUT: Just the enhanced English prompt (with preserved dialogue if any), no explanations.`;
+OUTPUT FORMAT:
+- If HARD violation: "POLICY_VIOLATION|HARD"
+- If fixable: "POLICY_WARNING|[your enhanced prompt here]"
+- If clean: "[your enhanced prompt here]"`;
 
   const body = {
     model: 'gpt-5-mini',

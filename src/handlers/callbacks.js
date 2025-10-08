@@ -911,6 +911,31 @@ Up to ${usageCount} people will register thanks to you! 🎉`
     if (!user || !user.sora_original_prompt) {
       return ctx.reply('❌ Промпт не найден. Попробуй ещё раз.');
     }
+    
+    // Предупреждение если был warning
+    if (user.sora_had_warning) {
+      await ctx.reply(user.language === 'en' 
+        ? '⚠️ Warning: Original prompt may be rejected by OpenAI. Proceeding...'
+        : '⚠️ Внимание: Оригинальный промпт может быть отклонён OpenAI. Отправляю...');
+    }
+    
     await executeSoraGeneration(ctx, user, user.sora_original_prompt, false);
+  });
+
+  bot.action('sora_rewrite', async (ctx) => {
+    await ctx.answerCbQuery();
+    const userId = ctx.from.id;
+    const user = await DB.getUser(userId);
+    const MESSAGES = getMessages(user?.language || 'ru');
+    
+    await DB.updateUser(userId, {
+      sora_original_prompt: null,
+      sora_enhanced_prompt: null,
+      sora_had_warning: false
+    });
+    
+    await ctx.reply(user?.language === 'en'
+      ? '✏️ Okay, send a new prompt.'
+      : '✏️ Хорошо, отправь новый промпт.');
   });
 }
