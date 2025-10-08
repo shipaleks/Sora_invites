@@ -60,7 +60,19 @@ export async function executeSoraGeneration(ctx, user, promptToUse, isEnhanced) 
     // 4) Пускаем в очередь на генерацию (НЕ ждём завершения, чтобы не упасть по handlerTimeout)
     soraQueue.enqueue(async () => {
       try {
-        await ctx.reply(MESSAGES.generationStarted);
+        // Расчёт ETA на основе параметров
+        let eta = '3-5 минут';
+        if (model === 'sora-2-pro') {
+          if (duration >= 12) eta = '10-15 минут';
+          else if (duration >= 8) eta = '7-10 минут';
+          else eta = '5-7 минут';
+        } else {
+          if (duration >= 12) eta = '5-8 минут';
+          else if (duration >= 8) eta = '3-5 минут';
+          else eta = '1-3 минуты';
+        }
+        
+        await ctx.reply(MESSAGES.generationStarted(eta));
         const create = await createSoraVideo({ model, prompt: promptToUse, durationSeconds: duration, width, height });
         console.log('[Sora] Video created, ID:', create.id);
         const result = await pollSoraVideo(create.id);
@@ -76,7 +88,11 @@ export async function executeSoraGeneration(ctx, user, promptToUse, isEnhanced) 
         const videoBuffer = await contentResp.arrayBuffer();
         console.log('[Sora] Video downloaded, size:', videoBuffer.byteLength, 'bytes');
         
-        await ctx.replyWithVideo({ source: Buffer.from(videoBuffer) }, { caption: MESSAGES.generationSuccess });
+        // Отправляем как документ для сохранения оригинального качества и пропорций
+        await ctx.replyWithDocument(
+          { source: Buffer.from(videoBuffer), filename: `sora_${create.id}.mp4` },
+          { caption: `${MESSAGES.generationSuccess}\n\n📊 ${model}, ${duration}с, ${width}x${height}` }
+        );
       } catch (err) {
         console.error('Sora generation error:', err);
         await ctx.reply(MESSAGES.generationFailed(err.message || 'unknown'));
