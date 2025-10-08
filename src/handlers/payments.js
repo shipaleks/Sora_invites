@@ -118,8 +118,7 @@ export function registerPaymentHandlers(bot) {
             const videoBuffer = await contentResp.arrayBuffer();
             console.log('[Sora] Video downloaded, size:', videoBuffer.byteLength, 'bytes');
             
-            const sentMsg = await ctx.telegram.sendDocument(
-              userId,
+            const sentMsg = await ctx.replyWithDocument(
               { source: Buffer.from(videoBuffer), filename: `sora_${create.id}.mp4` },
               { caption: `${MESSAGES.generationSuccess}\n\n📊 ${model}, ${duration}с, ${width}x${height}\n\n❓ Проблемы? → ${config.telegram.soraUsername}` }
             );
@@ -144,11 +143,10 @@ export function registerPaymentHandlers(bot) {
             
             // Уведомляем админа об успешной генерации + отправляем файл
             try {
-              const safeUsername = user.username ? user.username.replace(/_/g, '\\_').replace(/\./g, '\\.') : 'anonymous';
+              const safeUsername = (user.username || 'anonymous').replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
               await ctx.telegram.sendMessage(
                 config.telegram.adminId,
-                `✅ Sora видео доставлено\\n\\nUser: @${safeUsername} (${userId})\\nTX: ${tx.id}\\nVideo: ${create.id}\\nFile ID: ${fileId || 'N/A'}\\nStars: ${payment.total_amount}⭐\\nMode: ${model}, ${duration}с, ${width}x${height}\\nSize: ${Math.round(videoBuffer.byteLength / 1024)}KB`,
-                { parse_mode: 'MarkdownV2' }
+                `✅ Sora видео доставлено\n\nUser: @${safeUsername} \\(${userId}\\)\nTX: ${tx.id}\nVideo: ${create.id}\nFile ID: ${fileId || 'N/A'}\nStars: ${payment.total_amount}⭐\nMode: ${model}, ${duration}с, ${width}x${height}\nSize: ${Math.round(videoBuffer.byteLength / 1024)}KB`
               );
               
               // Отправляем копию файла админу
