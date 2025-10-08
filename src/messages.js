@@ -130,9 +130,9 @@ const MESSAGES = {
       
       if (poolSize >= position) {
         waitTime = '⚡️ **Примерное время ожидания:** несколько минут';
-      } else if (avgWaitHours !== null) {
-        // Используем реальную статистику
-        const waitingAhead = position - poolSize;
+      } else if (avgWaitHours !== null && avgWaitHours > 0 && avgWaitHours < 1000) {
+        // Используем реальную статистику только если она адекватная
+        const waitingAhead = Math.max(0, position - poolSize);
         const estimatedHours = avgWaitHours * (waitingAhead / Math.max(1, poolSize || 1));
         
         if (estimatedHours < 1) {
@@ -141,29 +141,18 @@ const MESSAGES = {
           waitTime = `⏱ **Примерное время ожидания:** ~${Math.round(estimatedHours)} час`;
         } else if (estimatedHours < 24) {
           waitTime = `⏱ **Примерное время ожидания:** ~${Math.round(estimatedHours)} часов`;
-        } else {
+        } else if (estimatedHours < 72) {
           const days = Math.round(estimatedHours / 24);
-          waitTime = `⏱ **Примерное время ожидания:** ~${days} ${days === 1 ? 'день' : 'дня'}`;
-        }
-        
-        waitTime += `\n\n📊 *Среднее время последних получивших: ${Math.round(avgWaitHours)} ч*`;
-      } else {
-        // Фолбэк если нет статистики
-        const waitingAhead = position - poolSize;
-        if (waitingAhead <= 3) {
-          waitTime = '⏱ **Примерное время ожидания:** 1-2 часа';
-        } else if (waitingAhead <= 6) {
-          waitTime = '⏱ **Примерное время ожидания:** 2-4 часа';
-        } else if (waitingAhead <= 12) {
-          waitTime = '⏱ **Примерное время ожидания:** 4-8 часов';
+          waitTime = `⏱ **Примерное время ожидания:** ~${days} ${days === 1 ? 'день' : days < 5 ? 'дня' : 'дней'}`;
         } else {
-          waitTime = '⏱ **Примерное время ожидания:** 8-24 часа';
+          waitTime = '⏱ **Спрос большой.** Код придёт, но может занять время.';
         }
+      } else {
+        // Фолбэк если нет статистики или она некорректна
+        waitTime = '⏱ **Спрос большой.** Код придёт, но может занять время.';
       }
       
-      const generateHint = showGenerateOption ? `\n\n💡 **Не хочешь ждать?**\nСгенерируй видео прямо сейчас — доступна Pro версия (у OpenAI $100/мес, у нас от 100⭐)\n\n👉 /generate` : '';
-      
-      return `✅ **Ты добавлен в очередь!**
+      return { text: `✅ **Ты добавлен в очередь!**
 
 📊 **Твоя позиция:** #${position}
 💎 **Кодов в пуле:** ${poolSize}
@@ -172,11 +161,12 @@ ${waitTime}
 ${poolSize > 0 
   ? `🚀 Твоя очередь подойдет скоро! Как только освободится код, я сразу тебе отправлю.` 
   : `⏳ Пул пока пуст, но скоро появятся новые коды от участников.`}
-${generateHint}
 
 ⚠️ **Важно:** Если найдёшь код раньше в другом месте — пожалуйста, верни неиспользованный код обратно через кнопку "Вернуть неиспользованный инвайт" в /start! Это поможет другим получить доступ быстрее.
 
-📊 Проверить статус: /stats`;
+📊 Проверить статус: /stats`,
+        showGenerateButton: showGenerateOption
+      };
     },
 
     stats: (position, poolSize, queueSize, codesReturned) => {
@@ -608,9 +598,9 @@ Without your help the system can't work! 🙏
       
       if (poolSize >= position) {
         waitTime = '⚡️ **Estimated wait time:** a few minutes';
-      } else if (avgWaitHours !== null) {
-        // Use real statistics
-        const waitingAhead = position - poolSize;
+      } else if (avgWaitHours !== null && avgWaitHours > 0 && avgWaitHours < 1000) {
+        // Use real statistics only if reasonable
+        const waitingAhead = Math.max(0, position - poolSize);
         const estimatedHours = avgWaitHours * (waitingAhead / Math.max(1, poolSize || 1));
         
         if (estimatedHours < 1) {
@@ -619,29 +609,18 @@ Without your help the system can't work! 🙏
           waitTime = `⏱ **Estimated wait time:** ~${Math.round(estimatedHours)} hour`;
         } else if (estimatedHours < 24) {
           waitTime = `⏱ **Estimated wait time:** ~${Math.round(estimatedHours)} hours`;
-        } else {
+        } else if (estimatedHours < 72) {
           const days = Math.round(estimatedHours / 24);
-          waitTime = `⏱ **Estimated wait time:** ~${days} ${days === 1 ? 'day' : 'days'}`;
-        }
-        
-        waitTime += `\n\n📊 *Recent average: ${Math.round(avgWaitHours)} hours*`;
-      } else {
-        // Fallback if no statistics
-        const waitingAhead = position - poolSize;
-        if (waitingAhead <= 3) {
-          waitTime = '⏱ **Estimated wait time:** 1-2 hours';
-        } else if (waitingAhead <= 6) {
-          waitTime = '⏱ **Estimated wait time:** 2-4 hours';
-        } else if (waitingAhead <= 12) {
-          waitTime = '⏱ **Estimated wait time:** 4-8 hours';
+          waitTime = `⏱ **Estimated wait time:** ~${days} day${days > 1 ? 's' : ''}`;
         } else {
-          waitTime = '⏱ **Estimated wait time:** 8-24 hours';
+          waitTime = '⏱ **High demand.** You\'ll get the code, but it may take time.';
         }
+      } else {
+        // Fallback if no statistics or incorrect
+        waitTime = '⏱ **High demand.** You\'ll get the code, but it may take time.';
       }
       
-      const generateHint = showGenerateOption ? `\n\n💡 **Don't want to wait?**\nGenerate video right now — Pro version available (OpenAI charges $100/mo, we start from 100⭐)\n\n👉 /generate` : '';
-      
-      return `✅ **You've been added to the queue!**
+      return { text: `✅ **You've been added to the queue!**
 
 📊 **Your position:** #${position}
 💎 **Codes in pool:** ${poolSize}
@@ -650,11 +629,12 @@ ${waitTime}
 ${poolSize > 0 
   ? `🚀 Your turn will come soon! As soon as a code becomes available, I'll send it to you right away.` 
   : `⏳ The pool is empty for now, but new codes from participants will appear soon.`}
-${generateHint}
 
 ⚠️ **Important:** If you find a code elsewhere before your turn — please return the unused code via "Return Unused Invite" button in /start! This will help others get access faster.
 
-📊 Check status: /stats`;
+📊 Check status: /stats`,
+        showGenerateButton: showGenerateOption
+      };
     },
 
     stats: (position, poolSize, queueSize, codesReturned) => {

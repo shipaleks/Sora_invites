@@ -128,8 +128,17 @@ export function registerCallbacks(bot) {
     // Показываем опцию генерации если очередь > 3 человек
     const showGenerateOption = queueSize > 3;
     
-    await ctx.reply(MESSAGES.addedToQueue(position, poolSize, avgWaitHours, showGenerateOption), { 
-      parse_mode: 'Markdown' 
+    const queueMsg = MESSAGES.addedToQueue(position, poolSize, avgWaitHours, showGenerateOption);
+    
+    const keyboard = showGenerateOption ? {
+      inline_keyboard: [[
+        { text: '🎬 Сгенерировать видео сейчас', callback_data: 'start_generate' }
+      ]]
+    } : undefined;
+    
+    await ctx.reply(queueMsg.text, { 
+      parse_mode: 'Markdown',
+      reply_markup: keyboard
     });
     
     // Уведомление админу
