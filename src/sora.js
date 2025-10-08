@@ -122,12 +122,17 @@ export async function createSoraVideo({ model, prompt, durationSeconds = 4, widt
     }
   }
 
+  // Минимальный payload - только model и prompt обязательны
   const payload = {
     model, // 'sora-2' | 'sora-2-pro'
-    prompt,
-    duration: durationSeconds, // number: 4, 8, or 12
-    aspect_ratio: aspectRatio // string: "16:9", "9:16", "1:1"
+    prompt
   };
+  
+  // Добавляем опциональные параметры только если API их поддерживает
+  // Пока оставляем только базовые, чтобы найти рабочую комбинацию
+  if (aspectRatio && aspectRatio !== '16:9') {
+    payload.aspect_ratio = aspectRatio;
+  }
 
   console.log('[Sora] Creating video with payload:', JSON.stringify(payload, null, 2));
 
