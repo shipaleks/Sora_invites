@@ -252,17 +252,25 @@ export function registerCommands(bot) {
     }
   });
 
-  // /generate (admin only test flow)
+  // /generate (public command)
   bot.command('generate', async (ctx) => {
     const userId = ctx.from.id;
-    if (userId !== config.telegram.adminId) {
-      return;
+    const user = await DB.getUser(userId);
+    
+    // SHADOW BAN
+    if (user?.is_banned) {
+      console.log(`[SHADOW BAN] User @${user.username} tried /generate`);
+      const msg = user.language === 'en' ? '⏳ Service temporarily unavailable. Try later!' : '⏳ Сервис временно недоступен. Попробуй позже!';
+      return ctx.reply(msg);
     }
 
-    const user = await DB.getUser(userId);
     const MESSAGES = getMessages(user?.language || 'ru');
+    
+    const introText = user?.language === 'en'
+      ? `🎬 **Sora Video Generation**\n\n✨ Generate videos with AI right in Telegram!\n\n**Available:**\n• Basic (sora-2) — 100⭐\n• HD (sora-2-pro) — 250⭐\n  _Usually $100/mo at OpenAI!_\n\n**Features:**\n• Pro version access\n• No watermark\n• 1-3 min generation\n\nChoose mode:`
+      : `🎬 **Генерация видео в Sora**\n\n✨ Создавай видео с помощью AI прямо в Telegram!\n\n**Доступно:**\n• Обычный (sora-2) — 100⭐\n• HD (sora-2-pro) — 250⭐\n  _Обычно $100/мес у OpenAI!_\n\n**Возможности:**\n• Доступ к Pro версии\n• Без вотермарки\n• Генерация 1-3 мин\n\nВыбери режим:`;
 
-    await ctx.reply(MESSAGES.generateAdminIntro, {
+    await ctx.reply(introText, {
       reply_markup: {
         inline_keyboard: [[
           { text: '✨ ' + MESSAGES.generateOptions.basic4s, callback_data: 'gen_basic4s' }
