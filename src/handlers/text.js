@@ -1015,9 +1015,16 @@ async function handleBroadcast(ctx, text, bot) {
 // handleRefundUser moved to commands.js as bot.command('refunduser')
 
 async function handleAnnounceVideos(ctx, bot) {
-  await ctx.reply('🚀 Запускаю targeted рассылку о генерации видео...');
+  // Защита от повторных запусков
+  const acquired = await DB.acquireLock('announce_videos', 3600); // 1 час
+  if (!acquired) {
+    return ctx.reply('⚠️ Рассылка уже идёт. Подожди час перед следующей.');
+  }
   
-  const allUsers = await DB.getAllUsers();
+  try {
+    await ctx.reply('🚀 Запускаю targeted рассылку о генерации видео...');
+    
+    const allUsers = await DB.getAllUsers();
   
   // Сегментация пользователей
   const withInvites = allUsers.filter(u => 
@@ -1168,10 +1175,14 @@ From 100⭐
     }
   }
   
-  return ctx.reply(`✅ Рассылка завершена!\n\n` +
-    `С инвайтами: ${sent.withInvites}\n` +
-    `В очереди: ${sent.inQueue}\n` +
-    `Остальные: ${sent.others}\n` +
-    `Ошибок: ${failed}\n\n` +
-    `Всего отправлено: ${sent.withInvites + sent.inQueue + sent.others}`);
+    return ctx.reply(`✅ Рассылка завершена!\n\n` +
+      `С инвайтами: ${sent.withInvites}\n` +
+      `В очереди: ${sent.inQueue}\n` +
+      `Остальные: ${sent.others}\n` +
+      `Ошибок (blocked): ${failed}\n\n` +
+      `Всего отправлено: ${sent.withInvites + sent.inQueue + sent.others}`);
+  } finally {
+    // Освобождаем лок через 30 сек после завершения
+    setTimeout(() => DB.releaseLock('announce_videos'), 30000);
+  }
 }
