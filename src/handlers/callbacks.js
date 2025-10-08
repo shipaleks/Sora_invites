@@ -876,8 +876,10 @@ Up to ${usageCount} people will register thanks to you! 🎉`
   bot.action('sora_use_enhanced', async (ctx) => {
     await ctx.answerCbQuery();
     const userId = ctx.from.id;
-    if (userId !== config.telegram.adminId) return;
     const user = await DB.getUser(userId);
+    
+    console.log('[Sora] User chose enhanced prompt:', userId);
+    
     if (!user || !user.sora_enhanced_prompt) {
       return ctx.reply('❌ Промпт не найден. Попробуй ещё раз.');
     }
@@ -887,8 +889,10 @@ Up to ${usageCount} people will register thanks to you! 🎉`
   bot.action('sora_use_original', async (ctx) => {
     await ctx.answerCbQuery();
     const userId = ctx.from.id;
-    if (userId !== config.telegram.adminId) return;
     const user = await DB.getUser(userId);
+    
+    console.log('[Sora] User chose original prompt:', userId);
+    
     if (!user || !user.sora_original_prompt) {
       return ctx.reply('❌ Промпт не найден. Попробуй ещё раз.');
     }
