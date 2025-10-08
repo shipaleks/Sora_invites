@@ -5,6 +5,7 @@ import admin from 'firebase-admin';
 import { enhancePromptWithCookbook, createSoraVideo, pollSoraVideo, soraQueue, Stars, SoraPricing } from '../sora.js';
 import { roundUpTo } from '../utils/helpers.js';
 import { validateSoraPrompt } from '../utils/validators.js';
+import { executeSoraGeneration } from '../sora-handlers.js';
 
 const db = admin.firestore();
 
@@ -771,8 +772,6 @@ Up to ${usageCount} people will register thanks to you! 🎉`
     if (!user || !user.sora_enhanced_prompt) {
       return ctx.reply('❌ Промпт не найден. Попробуй ещё раз.');
     }
-    // Импортируем executeSoraGeneration из text.js
-    const { executeSoraGeneration } = await import('../handlers/text.js');
     await executeSoraGeneration(ctx, user, user.sora_enhanced_prompt, true);
   });
 
@@ -784,8 +783,6 @@ Up to ${usageCount} people will register thanks to you! 🎉`
     if (!user || !user.sora_original_prompt) {
       return ctx.reply('❌ Промпт не найден. Попробуй ещё раз.');
     }
-    // Импортируем executeSoraGeneration из text.js
-    const { executeSoraGeneration } = await import('../handlers/text.js');
     await executeSoraGeneration(ctx, user, user.sora_original_prompt, false);
   });
 }
