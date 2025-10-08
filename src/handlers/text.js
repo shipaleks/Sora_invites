@@ -286,7 +286,7 @@ async function handleSoraPrompt(ctx, user) {
     });
     console.log('[Sora] Saved prompts to DB, sending choice buttons...');
     
-    await ctx.reply(MESSAGES.promptEnhanceChoice, {
+    const sent = await ctx.reply(MESSAGES.promptEnhanceChoice, {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [[
@@ -295,7 +295,7 @@ async function handleSoraPrompt(ctx, user) {
         ]]
       }
     });
-    console.log('[Sora] Choice buttons sent successfully');
+    console.log('[Sora] Choice buttons sent successfully, message_id:', sent.message_id);
   } catch (error) {
     console.error('Sora prompt enhancement error:', error);
     await ctx.reply(MESSAGES.generationFailed(error.message || 'unknown'));
