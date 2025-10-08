@@ -256,43 +256,67 @@ async function processNextInvite(bot, userId, codeObj) {
       config.rules.first10CodesRequired : 
       config.rules.regularCodesRequired;
     
-    await DB.updateUser(userId, {
-      status: 'received',
-      invite_sent_at: new Date(),
-      invite_code_given: codeObj.code,
-      reminder_count: 0,
-      invites_received_count: (user.invites_received_count || 0) + 1
-    });
-    
-    await DB.markCodeAsSent(codeObj.id, userId);
-    
-    await bot.telegram.sendMessage(
-      userId,
-      MESSAGES.inviteSent(codeObj.code, codesRequired),
-      {
-        parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: MESSAGES.buttons.shareCode, callback_data: 'share_code' }],
-            [{ text: MESSAGES.buttons.reportInvalid, callback_data: 'report_invalid' }]
-          ]
-        }
-      }
-    );
-    
-    console.log(`[Queue] Sent invite to @${user.username} (${count <= 10 ? 'first 10' : 'regular'}, lang: ${user.language})`);
-    
-    // Уведомить админа
+    // Пробуем отправить сообщение ПЕРЕД обновлением БД
     try {
       await bot.telegram.sendMessage(
-        config.telegram.adminId,
-        `✅ Инвайт отправлен: @${user.username}\n` +
-        `Должен вернуть: ${codesRequired} кодов\n` +
-        `Статус: ${count <= 10 ? 'Из первых 10' : 'Обычный пользователь'}\n` +
-        `Язык: ${user.language === 'en' ? 'English' : 'Русский'}`
+        userId,
+        MESSAGES.inviteSent(codeObj.code, codesRequired),
+        {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: MESSAGES.buttons.shareCode, callback_data: 'share_code' }],
+              [{ text: MESSAGES.buttons.reportInvalid, callback_data: 'report_invalid' }]
+            ]
+          }
+        }
       );
-    } catch (error) {
-      console.error('[Queue] Admin notification failed:', error.message);
+      
+      // Отправка успешна — обновляем БД
+      await DB.updateUser(userId, {
+        status: 'received',
+        invite_sent_at: new Date(),
+        invite_code_given: codeObj.code,
+        reminder_count: 0,
+        invites_received_count: (user.invites_received_count || 0) + 1
+      });
+      
+      await DB.markCodeAsSent(codeObj.id, userId);
+      
+      console.log(`[Queue] Sent invite to @${user.username} (${count <= 10 ? 'first 10' : 'regular'}, lang: ${user.language})`);
+      
+      // Уведомить админа
+      try {
+        await bot.telegram.sendMessage(
+          config.telegram.adminId,
+          `✅ Инвайт отправлен: @${user.username}\n` +
+          `Должен вернуть: ${codesRequired} кодов\n` +
+          `Статус: ${count <= 10 ? 'Из первых 10' : 'Обычный пользователь'}\n` +
+          `Язык: ${user.language === 'en' ? 'English' : 'Русский'}`
+        );
+      } catch (error) {
+        console.error('[Queue] Admin notification failed:', error.message);
+      }
+    } catch (sendError) {
+      // Отправка не удалась (403 blocked, etc) — возвращаем код в пул
+      console.error(`[Queue] Failed to send invite to ${userId}:`, sendError.message);
+      
+      // Возвращаем код как available
+      const admin = await import('firebase-admin');
+      const db = admin.default.firestore();
+      await db.collection('invite_pool').doc(codeObj.id).update({
+        status: 'available',
+        sent_to: null
+      });
+      
+      // Увеличиваем счётчик пула обратно
+      await DB.updateSystemSettings({
+        codes_in_pool: admin.default.firestore.FieldValue.increment(1)
+      });
+      
+      console.log(`[Queue] Code ${codeObj.code} returned to pool (user blocked bot)`);
+      
+      // НЕ добавляем пользователя обратно в очередь — он заблокировал бота
     }
   } catch (error) {
     console.error(`[Queue] Failed to process invite for ${userId}:`, error);
