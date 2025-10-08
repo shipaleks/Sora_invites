@@ -166,11 +166,11 @@ export function registerPaymentHandlers(bot) {
             
             // Рефанд при ошибке
             try {
-              await bot.telegram.refundStarPayment(userId, payment.telegram_payment_charge_id);
+              await ctx.telegram.refundStarPayment(userId, payment.telegram_payment_charge_id);
               await ctx.reply(`${MESSAGES.generationFailed(err.message || 'unknown')}\n\n${MESSAGES.paymentRefunded(payment.total_amount)}\n\n🔄 Попробуй ещё раз: /generate`);
               
               // Уведомляем админа об ошибке и рефанде
-              await bot.telegram.sendMessage(
+              await ctx.telegram.sendMessage(
                 config.telegram.adminId,
                 `❌ Sora ошибка + рефанд\n\nUser: @${user.username}\nTX: ${tx.id}\nStars: ${payment.total_amount}⭐ (возвращены)\nError: ${err.message}\nCharge: ${payment.telegram_payment_charge_id}`
               );
@@ -184,7 +184,7 @@ export function registerPaymentHandlers(bot) {
               await ctx.reply(`${MESSAGES.generationFailed(err.message || 'unknown')}\n\n❌ Автоматический возврат не удался. Свяжись с ${config.telegram.soraUsername} для рефанда.`);
               
               // Критическое уведомление админу
-              await bot.telegram.sendMessage(
+              await ctx.telegram.sendMessage(
                 config.telegram.adminId,
                 `🚨 КРИТИЧНО: Рефанд не удался!\n\nUser: @${user.username}\nTX: ${tx.id}\nStars: ${payment.total_amount}⭐\nCharge: ${payment.telegram_payment_charge_id}\n\nНужен ручной рефанд!`
               );
