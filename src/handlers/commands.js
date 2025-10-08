@@ -47,16 +47,15 @@ export function registerCommands(bot) {
     
     const MESSAGES = getMessages(user.language);
     
-    // Если пользователь уже получил инвайт, ПРИОРИТЕТ - поделиться кодом!
+    // Если пользователь уже получил инвайт
     if (user.status === 'received') {
       await ctx.reply(MESSAGES.welcome, {
         reply_markup: {
           inline_keyboard: [
             [{ text: MESSAGES.buttons.shareCode, callback_data: 'share_code' }],
+            [{ text: MESSAGES.buttons.generateVideo, callback_data: 'start_generate' }],
             [{ text: MESSAGES.buttons.returnUnused, callback_data: 'return_unused' }],
-            [{ text: MESSAGES.buttons.reportInvalid, callback_data: 'report_invalid' }],
-            [{ text: MESSAGES.buttons.wantInvite, callback_data: 'want_invite' }],
-            [{ text: MESSAGES.buttons.generateVideo, callback_data: 'start_generate' }]
+            [{ text: MESSAGES.buttons.reportInvalid, callback_data: 'report_invalid' }]
           ]
         },
         parse_mode: 'Markdown'
