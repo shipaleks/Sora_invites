@@ -191,11 +191,19 @@ ${poolSize > queueSize
   : '🟡 Ждем возврата кодов от участников'}`;
     },
 
-    alreadyInQueue: (position) => `ℹ️ Ты уже в очереди на позиции **#${position}**
+    alreadyInQueue: (position, showGenerateOption) => {
+      const generateHint = showGenerateOption ? `\n\n💡 **Не хочешь ждать?**\nСгенерируй видео с Sora Pro прямо сейчас (обычно $100/мес, у нас от 100⭐)` : '';
+      
+      return {
+        text: `ℹ️ Ты уже в очереди на позиции **#${position}**
 
 Как только подойдет твоя очередь, я сразу отправлю инвайт!
+${generateHint}
 
 📊 Проверить статус: /stats`,
+        showGenerateButton: showGenerateOption
+      };
+    },
 
     notInSystem: `❌ Ты еще не зарегистрирован.
 
@@ -659,11 +667,19 @@ ${poolSize > queueSize
   : '🟡 Waiting for codes from participants'}`;
     },
 
-    alreadyInQueue: (position) => `ℹ️ You're already in queue at position **#${position}**
+    alreadyInQueue: (position, showGenerateOption) => {
+      const generateHint = showGenerateOption ? `\n\n💡 **Don't want to wait?**\nGenerate video with Sora Pro right now (usually $100/mo, we start from 100⭐)` : '';
+      
+      return {
+        text: `ℹ️ You're already in queue at position **#${position}**
 
 As soon as it's your turn, I'll send you the invite!
+${generateHint}
 
 📊 Check status: /stats`,
+        showGenerateButton: showGenerateOption
+      };
+    },
 
     notInSystem: `❌ You're not registered yet.
 

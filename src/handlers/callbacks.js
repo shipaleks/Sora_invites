@@ -61,8 +61,19 @@ export function registerCallbacks(bot) {
     // Проверка, не в очереди ли уже
     const position = await DB.getQueuePosition(userId);
     if (position && user.status === 'waiting') {
-      return ctx.reply(MESSAGES.alreadyInQueue(position), { 
-        parse_mode: 'Markdown' 
+      const queueSize = await DB.getQueueSize();
+      const showGenerateOption = queueSize > 3;
+      const alreadyMsg = MESSAGES.alreadyInQueue(position, showGenerateOption);
+      
+      const keyboard = showGenerateOption ? {
+        inline_keyboard: [[
+          { text: '🎬 Сгенерировать видео сейчас', callback_data: 'start_generate' }
+        ]]
+      } : undefined;
+      
+      return ctx.reply(alreadyMsg.text, { 
+        parse_mode: 'Markdown',
+        reply_markup: keyboard
       });
     }
 
