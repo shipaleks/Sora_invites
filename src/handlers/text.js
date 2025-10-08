@@ -10,6 +10,11 @@ export function registerTextHandlers(bot) {
     const userId = ctx.from.id;
     const text = ctx.message.text;
     
+    // Логируем все админ-команды
+    if (text.startsWith('/') && userId === config.telegram.adminId) {
+      console.log('[Admin] Command received:', text, 'from user:', userId);
+    }
+    
     const user = await DB.getUser(userId);
     const MESSAGES = getMessages(user?.language || 'ru');
     
