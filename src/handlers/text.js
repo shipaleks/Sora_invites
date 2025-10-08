@@ -251,6 +251,7 @@ async function handleDonation(ctx, user) {
 }
 
 async function handleSoraPrompt(ctx, user) {
+  console.log('[Sora] handleSoraPrompt v1.0.1 - NEW CODE with choice buttons');
   const language = user.language || 'ru';
   const MESSAGES = getMessages(language);
   const text = ctx.message.text || '';
@@ -262,13 +263,16 @@ async function handleSoraPrompt(ctx, user) {
 
   try {
     // 1) Улучшаем промпт (бесплатно) и предлагаем выбор
+    console.log('[Sora] Enhancing prompt...');
     const enhanced = await enhancePromptWithCookbook(text, language);
+    console.log('[Sora] Enhanced prompt length:', enhanced.length);
     
     // Сохраняем оба варианта для выбора
     await DB.updateUser(user.telegram_id, { 
       sora_original_prompt: text,
       sora_enhanced_prompt: enhanced
     });
+    console.log('[Sora] Saved prompts to DB, sending choice buttons...');
     
     await ctx.reply(MESSAGES.promptEnhanceChoice, {
       parse_mode: 'Markdown',
@@ -279,6 +283,7 @@ async function handleSoraPrompt(ctx, user) {
         ]]
       }
     });
+    console.log('[Sora] Choice buttons sent successfully');
   } catch (error) {
     console.error('Sora prompt enhancement error:', error);
     await ctx.reply(MESSAGES.generationFailed(error.message || 'unknown'));
