@@ -119,7 +119,7 @@ export async function createSoraVideo({ model, prompt, durationSeconds = 4, widt
   const payload = {
     model, // 'sora-2' | 'sora-2-pro'
     prompt,
-    seconds: durationSeconds, // number: 4, 8, or 12
+    seconds: String(durationSeconds), // string: "4", "8", or "12"
     size: width && height ? `${width}x${height}` : '1280x720' // string: "widthxheight"
   };
 
