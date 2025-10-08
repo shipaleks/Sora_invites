@@ -62,6 +62,9 @@ export function registerTextHandlers(bot) {
       if (text === '/announcevideos') {
         return handleAnnounceVideos(ctx, bot);
       }
+      if (text.startsWith('/clearlock ')) {
+        return handleClearLock(ctx, text);
+      }
       // /refunduser теперь в commands.js
       // Остальные команды админа (start, stats, help, language, generate, refunduser) - пропускаем в commands.js
     }
@@ -1014,6 +1017,22 @@ async function handleBroadcast(ctx, text, bot) {
 
 // handleRefundUser moved to commands.js as bot.command('refunduser')
 
+async function handleClearLock(ctx, text) {
+  const lockName = text.replace('/clearlock ', '').trim();
+  
+  if (!lockName) {
+    return ctx.reply('❌ Укажи имя лока: /clearlock announce_videos');
+  }
+  
+  try {
+    await DB.releaseLock(lockName);
+    return ctx.reply(`✅ Лок "${lockName}" освобождён`);
+  } catch (error) {
+    console.error('[ClearLock] Error:', error);
+    return ctx.reply(`❌ Ошибка: ${error.message}`);
+  }
+}
+
 async function handleAnnounceVideos(ctx, bot) {
   // Защита от повторных запусков
   const acquired = await DB.acquireLock('announce_videos', 3600); // 1 час
@@ -1146,39 +1165,54 @@ From 100⭐
       const msg = user.language === 'en' ? msgWithInvites.en : msgWithInvites.ru;
       await bot.telegram.sendMessage(user.telegram_id, msg, { parse_mode: 'Markdown' });
       sent.withInvites++;
-      if (sent.withInvites % 10 === 0) {
-        console.log(`[Announce] Progress: ${sent.withInvites}/${withInvites.length} with invites sent`);
+      if (sent.withInvites === 1 || sent.withInvites % 10 === 0) {
+        console.log(`[Announce] ✅ Success: ${sent.withInvites}/${withInvites.length} with invites sent`);
       }
       await new Promise(r => setTimeout(r, 50));
     } catch (error) {
       failed++;
-      if (!error.message.includes('403')) {
-        console.error(`[Announce] Unexpected error for ${user.telegram_id}:`, error.message);
+      if (failed === 1 || !error.message.includes('403')) {
+        console.error(`[Announce] ❌ Failed for ${user.telegram_id} (@${user.username}):`, error.message);
       }
     }
   }
   
+  console.log(`[Announce] With invites done: ${sent.withInvites} sent, ${failed} failed. Starting queue segment...`);
+  
+  const queueFailed = 0;
   for (const user of inQueue) {
     try {
       const msg = user.language === 'en' ? msgInQueue.en : msgInQueue.ru;
       await bot.telegram.sendMessage(user.telegram_id, msg, { parse_mode: 'Markdown' });
       sent.inQueue++;
+      if (sent.inQueue === 1 || sent.inQueue % 10 === 0) {
+        console.log(`[Announce] ✅ Queue: ${sent.inQueue}/${inQueue.length} sent`);
+      }
       await new Promise(r => setTimeout(r, 50));
     } catch (error) {
       failed++;
-      console.error(`Announce failed for ${user.telegram_id}:`, error.message);
+      if (!error.message.includes('403')) {
+        console.error(`[Announce] Queue failed for ${user.telegram_id}:`, error.message);
+      }
     }
   }
+  
+  console.log(`[Announce] Queue done: ${sent.inQueue} sent. Starting others...`);
   
   for (const user of others) {
     try {
       const msg = user.language === 'en' ? msgOthers.en : msgOthers.ru;
       await bot.telegram.sendMessage(user.telegram_id, msg, { parse_mode: 'Markdown' });
       sent.others++;
+      if (sent.others === 1 || sent.others % 10 === 0) {
+        console.log(`[Announce] ✅ Others: ${sent.others}/${others.length} sent`);
+      }
       await new Promise(r => setTimeout(r, 50));
     } catch (error) {
       failed++;
-      console.error(`Announce failed for ${user.telegram_id}:`, error.message);
+      if (!error.message.includes('403')) {
+        console.error(`[Announce] Others failed for ${user.telegram_id}:`, error.message);
+      }
     }
   }
   
