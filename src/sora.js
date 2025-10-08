@@ -192,9 +192,26 @@ export async function pollSoraVideo(jobId, progressCallback) {
         console.log('[Sora] Reached 100% but still in_progress, monitoring...');
       } else {
         const stuckDuration = (Date.now() - stuckAt100Since) / 1000;
-        if (stuckDuration > 180) { // 3 минуты на 100%
+        
+        // Попытка скачать контент после 2 минут на 100%
+        if (stuckDuration > 120 && stuckDuration < 125) {
+          console.log('[Sora] Trying to fetch content despite in_progress status...');
+          try {
+            const testResp = await fetch(`${OPENAI_BASE}/videos/${jobId}/content`, {
+              headers: { 'Authorization': `Bearer ${config.sora.openaiApiKey}` }
+            });
+            if (testResp.ok) {
+              console.log('[Sora] Content available! Returning as completed.');
+              return { ...data, status: 'completed' };
+            }
+          } catch (e) {
+            console.log('[Sora] Content not ready yet, continuing poll...');
+          }
+        }
+        
+        if (stuckDuration > 300) { // 5 минут на 100%
           console.error(`[Sora] Stuck at 100% for ${Math.round(stuckDuration)}s, aborting`);
-          throw new Error('Video stuck at 100% progress for 3+ minutes');
+          throw new Error('Video stuck at 100% progress for 5+ minutes');
         }
       }
     } else {
