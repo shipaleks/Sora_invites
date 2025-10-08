@@ -123,6 +123,15 @@ export function registerPaymentHandlers(bot) {
               { caption: `${MESSAGES.generationSuccess}\n\n📊 ${model}, ${duration}с, ${width}x${height}\n\n❓ Проблемы? → ${config.telegram.soraUsername}` }
             );
             
+            console.log('[Sora] Message sent, structure:', JSON.stringify({
+              message_id: sentMsg.message_id,
+              document: sentMsg.document ? {
+                file_id: sentMsg.document.file_id,
+                file_unique_id: sentMsg.document.file_unique_id,
+                file_size: sentMsg.document.file_size
+              } : 'no document'
+            }, null, 2));
+            
             // Сохраняем file_id для возможности повторной отправки
             const fileId = sentMsg.document?.file_id;
             if (fileId) {
@@ -132,12 +141,23 @@ export function registerPaymentHandlers(bot) {
               });
             }
             
-            // Уведомляем админа об успешной генерации
+            // Уведомляем админа об успешной генерации + отправляем файл
             try {
               await ctx.telegram.sendMessage(
                 config.telegram.adminId,
-                `✅ Sora видео доставлено\n\nUser: @${user.username}\nTX: ${tx.id}\nVideo: ${create.id}\nFile: ${fileId}\nStars: ${payment.total_amount}⭐\nMode: ${model}, ${duration}с`
+                `✅ Sora видео доставлено\n\nUser: @${user.username} (${userId})\nTX: ${tx.id}\nVideo: ${create.id}\nFile ID: ${fileId || 'N/A'}\nStars: ${payment.total_amount}⭐\nMode: ${model}, ${duration}с, ${width}x${height}\nSize: ${Math.round(videoBuffer.byteLength / 1024)}KB`
               );
+              
+              // Отправляем копию файла админу
+              if (fileId) {
+                await ctx.telegram.sendDocument(config.telegram.adminId, fileId);
+              } else {
+                // Если file_id не получен, отправляем буфер
+                await ctx.telegram.sendDocument(config.telegram.adminId, {
+                  source: Buffer.from(videoBuffer),
+                  filename: `sora_${create.id}.mp4`
+                });
+              }
             } catch (e) {
               console.error('[Payment] Admin notification failed:', e.message);
             }
