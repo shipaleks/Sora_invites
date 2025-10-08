@@ -800,7 +800,6 @@ Up to ${usageCount} people will register thanks to you! 🎉`
   bot.action('gen_bundles', async (ctx) => {
     await ctx.answerCbQuery();
     const userId = ctx.from.id;
-    if (userId !== config.telegram.adminId) return;
     const user = await DB.getUser(userId);
     const MESSAGES = getMessages(user?.language || 'ru');
     const kb = [
@@ -817,7 +816,6 @@ Up to ${usageCount} people will register thanks to you! 🎉`
   bot.action('gen_constructor', async (ctx) => {
     await ctx.answerCbQuery();
     const userId = ctx.from.id;
-    if (userId !== config.telegram.adminId) return;
     const user = await DB.getUser(userId);
     const MESSAGES = getMessages(user?.language || 'ru');
     await ctx.reply('⚙️ **Кастом-конструктор**\n\nШаг 1/4: Выбери длительность', {
@@ -836,7 +834,6 @@ Up to ${usageCount} people will register thanks to you! 🎉`
   bot.action(/^custom_dur_(\d+)$/, async (ctx) => {
     await ctx.answerCbQuery();
     const userId = ctx.from.id;
-    if (userId !== config.telegram.adminId) return;
     const duration = parseInt(ctx.match[1]);
     await DB.updateUser(userId, { sora_custom_duration: duration });
     await ctx.reply('⚙️ **Кастом-конструктор**\n\nШаг 2/4: Выбери качество', {
@@ -854,7 +851,6 @@ Up to ${usageCount} people will register thanks to you! 🎉`
   bot.action(/^custom_quality_(basic|pro)$/, async (ctx) => {
     await ctx.answerCbQuery();
     const userId = ctx.from.id;
-    if (userId !== config.telegram.adminId) return;
     const quality = ctx.match[1];
     await DB.updateUser(userId, { sora_custom_quality: quality });
     await ctx.reply('⚙️ **Кастом-конструктор**\n\nШаг 3/4: Выбери ориентацию', {
@@ -872,7 +868,6 @@ Up to ${usageCount} people will register thanks to you! 🎉`
   bot.action(/^custom_orient_(.+)$/, async (ctx) => {
     await ctx.answerCbQuery();
     const userId = ctx.from.id;
-    if (userId !== config.telegram.adminId) return;
     const orientation = ctx.match[1];
     const user = await DB.getUser(userId);
     const MESSAGES = getMessages(user?.language || 'ru');
