@@ -1139,15 +1139,22 @@ From 100⭐
   };
   
   // Рассылка с задержкой
+  console.log(`[Announce] Starting: ${withInvites.length} with invites, ${inQueue.length} in queue, ${others.length} others`);
+  
   for (const user of withInvites) {
     try {
       const msg = user.language === 'en' ? msgWithInvites.en : msgWithInvites.ru;
       await bot.telegram.sendMessage(user.telegram_id, msg, { parse_mode: 'Markdown' });
       sent.withInvites++;
+      if (sent.withInvites % 10 === 0) {
+        console.log(`[Announce] Progress: ${sent.withInvites}/${withInvites.length} with invites sent`);
+      }
       await new Promise(r => setTimeout(r, 50));
     } catch (error) {
       failed++;
-      console.error(`Announce failed for ${user.telegram_id}:`, error.message);
+      if (!error.message.includes('403')) {
+        console.error(`[Announce] Unexpected error for ${user.telegram_id}:`, error.message);
+      }
     }
   }
   
