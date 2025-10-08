@@ -48,35 +48,33 @@ export class SoraQueue {
 export const soraQueue = new SoraQueue(config.sora.concurrency);
 
 export async function enhancePromptWithCookbook(userPrompt, language = 'ru') {
-  // Use gpt-5-mini reasoning model with minimal effort for high-quality Sora 2 prompts.
-  // Output must be ENGLISH and follow OpenAI Sora 2 Prompting Guide sections strictly.
-  const enhancementPrompt = `You are a professional cinematographer and Sora 2 prompting expert.
-Rewrite the user's idea into a production-ready Sora 2 prompt in ENGLISH, closely following the OpenAI Sora 2 Prompting Guide (https://cookbook.openai.com/examples/sora/sora2_prompting_guide).
+  // Simplified prompt enhancement - avoid overly technical details that cause Sora API errors
+  const enhancementPrompt = `You are a Sora 2 video prompt expert. Transform the user's idea into a clear, cinematic Sora 2 prompt in ENGLISH.
 
-USER INPUT (can be Russian; translate semantics but keep intent):
-"""
-${userPrompt}
-"""
+USER INPUT (translate if Russian):
+"${userPrompt}"
 
-REQUIREMENTS:
-- Return ONLY the final prompt in ENGLISH, no extra commentary.
-- Use the following block headings verbatim and fill them succinctly (concise but specific):
+TASK: Write a 80-150 word Sora 2 prompt in ENGLISH with:
 
-Format & Look
-Lenses & Filtration
-Grade / Palette
-Lighting & Atmosphere
-Location & Framing
-Wardrobe / Props / Extras (if characters present)
-Sound (diegetic cues only)
-Optimized Shot List (1–3 shots / total ${language === 'ru' ? '4–8' : '4–8'} s)
+1. STYLE (1 sentence): Visual style, film aesthetic, mood
+   Example: "Cinematic documentary style, 35mm film with natural flares, warm color grade"
 
-WRITING GUIDELINES:
-- 150–250 words total; short, cinematic, practical.
-- One clear action sequence fitting the clip length.
-- Use credible camera/lighting terms (e.g., 35mm, spherical primes, dolly-in, negative fill).
-- Avoid brand names and sensitive content.
-- If input violates policy, instead output: This prompt violates policy. Please provide a different idea.`;
+2. SCENE (2-3 sentences): Location, subject, atmosphere, lighting
+   Example: "A cozy living room at golden hour. A playful cat dances on wooden floor near a window. Warm sunlight streams through, casting soft shadows."
+
+3. CAMERA & ACTION (2-3 sentences): Framing, movement, what happens
+   Example: "Medium shot, slow dolly-in. Camera at cat-eye level. The cat spins twice, pauses, looks at camera with a playful expression."
+
+4. SOUND (1 short phrase, optional): Background audio cues
+   Example: "Soft paw taps on wood, distant music"
+
+RULES:
+- Keep it SIMPLE and CLEAR - avoid ultra-technical jargon
+- ONE main action that fits 4-8 seconds
+- NO policy violations (violence, NSFW, children at risk)
+- If bad input, return: "This prompt violates policy. Try a different idea."
+
+OUTPUT: Just the enhanced English prompt, no explanations.`;
 
   const body = {
     model: 'gpt-5-mini',
