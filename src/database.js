@@ -525,7 +525,7 @@ export const DB = {
   },
 
   // === SORA TRANSACTIONS ===
-  async createSoraTransaction(telegramId, { type, stars, mode, bundleCount, videoIds = [] }) {
+  async createSoraTransaction(telegramId, { type, stars, mode, bundleCount, videoIds = [], fileIds = [] }) {
     const txRef = db.collection('sora_transactions').doc();
     const txData = {
       telegram_id: String(telegramId),
@@ -534,6 +534,7 @@ export const DB = {
       stars_paid: stars,
       bundle_count: bundleCount || 1,
       videos_generated: videoIds,
+      telegram_file_ids: fileIds, // Для проверки доставки
       videos_remaining: bundleCount ? bundleCount - videoIds.length : 0,
       status: 'paid',
       created_at: FieldValue.serverTimestamp(),

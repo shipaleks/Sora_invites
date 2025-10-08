@@ -452,8 +452,8 @@ Send the code that SORA gave YOU (different from ${code})`
     // ==== Sora Generation (admin test) ====
     generateAdminIntro: `🎬 **Генерация видео (тест, только админ)**\n\nВыбери режим:`,
     generateOptions: {
-      basic4s: 'Обычный (100⭐)',
-      pro4s: 'HD (250⭐)',
+      basic4s: 'Обычный',
+      pro4s: 'HD',
       bundles: 'Бандлы',
       constructor: 'Кастом'
     },
@@ -748,8 +748,8 @@ Choose:`
     // ==== Sora Generation (admin test) ====
     generateAdminIntro: `🎬 **Video generation (test, admin only)**\n\nChoose mode:`,
     generateOptions: {
-      basic4s: 'Basic (100⭐)',
-      pro4s: 'HD (250⭐)',
+      basic4s: 'Basic',
+      pro4s: 'HD',
       bundles: 'Bundles',
       constructor: 'Custom'
     },

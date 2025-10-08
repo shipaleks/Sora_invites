@@ -108,10 +108,29 @@ export function registerPaymentHandlers(bot) {
             const videoBuffer = await contentResp.arrayBuffer();
             console.log('[Sora] Video downloaded, size:', videoBuffer.byteLength, 'bytes');
             
-            await ctx.replyWithDocument(
+            const sentMsg = await ctx.replyWithDocument(
               { source: Buffer.from(videoBuffer), filename: `sora_${create.id}.mp4` },
-              { caption: `${MESSAGES.generationSuccess}\n\n📊 ${model}, ${duration}с, ${width}x${height}` }
+              { caption: `${MESSAGES.generationSuccess}\n\n📊 ${model}, ${duration}с, ${width}x${height}\n\n❓ Проблемы? → ${config.telegram.soraUsername}` }
             );
+            
+            // Сохраняем file_id для возможности повторной отправки
+            const fileId = sentMsg.document?.file_id;
+            if (fileId) {
+              await DB.updateSoraTransaction(tx.id, {
+                telegram_file_ids: [fileId],
+                delivery_confirmed: true
+              });
+            }
+            
+            // Уведомляем админа об успешной генерации
+            try {
+              await ctx.telegram.sendMessage(
+                config.telegram.adminId,
+                `✅ Sora видео доставлено\n\nUser: @${user.username}\nTX: ${tx.id}\nVideo: ${create.id}\nFile: ${fileId}\nStars: ${payment.total_amount}⭐\nMode: ${model}, ${duration}с`
+              );
+            } catch (e) {
+              console.error('[Payment] Admin notification failed:', e.message);
+            }
           } catch (err) {
             console.error('Sora generation error:', err);
             await ctx.reply(MESSAGES.generationFailed(err.message || 'unknown'));

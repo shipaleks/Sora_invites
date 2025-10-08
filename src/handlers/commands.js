@@ -174,7 +174,7 @@ export function registerCommands(bot) {
         ],[
           { text: '💎 ' + MESSAGES.generateOptions.pro4s, callback_data: 'gen_pro4s' }
         ],[
-          { text: '🎁 ' + MESSAGES.generateOptions.bundles, callback_data: 'gen_bundles' },
+          // { text: '🎁 ' + MESSAGES.generateOptions.bundles, callback_data: 'gen_bundles' },
           { text: '⚙️ ' + MESSAGES.generateOptions.constructor, callback_data: 'gen_constructor' }
         ]]
       },
