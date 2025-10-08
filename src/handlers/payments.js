@@ -58,6 +58,16 @@ export function registerPaymentHandlers(bot) {
         
         await ctx.reply(`✅ Оплата ${payment.total_amount}⭐ принята!\n\n${MESSAGES.generationQueued}`);
         
+        // Уведомляем админа о начале операции
+        try {
+          await bot.telegram.sendMessage(
+            config.telegram.adminId,
+            `💫 Новая Sora генерация\n\nUser: @${user.username} (${userId})\nTX: ${tx.id}\nMode: ${payloadData.model}, ${payloadData.duration}с\nStars: ${payment.total_amount}⭐\nCharge: ${payment.telegram_payment_charge_id}`
+          );
+        } catch (e) {
+          console.error('[Payment] Admin notification failed:', e.message);
+        }
+        
         // Запускаем генерацию
         const { prompt, model, duration, width, height } = pending;
         
@@ -86,11 +96,11 @@ export function registerPaymentHandlers(bot) {
               videos_remaining: 0
             });
             
-            // Опрашиваем с промежуточными статусами
+            // Опрашиваем с промежуточными статусами (без таймера - он неточный)
             const result = await pollSoraVideo(create.id, (progress, elapsed) => {
-              // Отправляем статус каждые 60 секунд или при ключевых прогрессах
-              if (elapsed % 60 < 6 || [40, 66, 89, 100].includes(progress)) {
-                const msg = `⏳ Прогресс: ${progress}%... (${Math.round(elapsed / 60)} мин)`;
+              // Отправляем статус при ключевых прогрессах
+              if ([40, 66, 89].includes(progress)) {
+                const msg = `⏳ Прогресс: ${progress}%...`;
                 if (msg !== lastStatusMsg) {
                   ctx.reply(msg).catch(() => {});
                   lastStatusMsg = msg;
@@ -133,12 +143,31 @@ export function registerPaymentHandlers(bot) {
             }
           } catch (err) {
             console.error('Sora generation error:', err);
-            await ctx.reply(MESSAGES.generationFailed(err.message || 'unknown'));
             
             // Рефанд при ошибке
-            const refund = await bot.telegram.refundStarPayment(userId, payment.telegram_payment_charge_id);
-            if (refund) {
-              await ctx.reply(MESSAGES.paymentRefunded(payment.total_amount));
+            try {
+              await bot.telegram.refundStarPayment(userId, payment.telegram_payment_charge_id);
+              await ctx.reply(`${MESSAGES.generationFailed(err.message || 'unknown')}\n\n${MESSAGES.paymentRefunded(payment.total_amount)}\n\n🔄 Попробуй ещё раз: /generate`);
+              
+              // Уведомляем админа об ошибке и рефанде
+              await bot.telegram.sendMessage(
+                config.telegram.adminId,
+                `❌ Sora ошибка + рефанд\n\nUser: @${user.username}\nTX: ${tx.id}\nStars: ${payment.total_amount}⭐ (возвращены)\nError: ${err.message}\nCharge: ${payment.telegram_payment_charge_id}`
+              );
+              
+              await DB.updateSoraTransaction(tx.id, {
+                status: 'refunded',
+                error_message: err.message
+              });
+            } catch (refundErr) {
+              console.error('[Payment] Refund failed:', refundErr);
+              await ctx.reply(`${MESSAGES.generationFailed(err.message || 'unknown')}\n\n❌ Автоматический возврат не удался. Свяжись с ${config.telegram.soraUsername} для рефанда.`);
+              
+              // Критическое уведомление админу
+              await bot.telegram.sendMessage(
+                config.telegram.adminId,
+                `🚨 КРИТИЧНО: Рефанд не удался!\n\nUser: @${user.username}\nTX: ${tx.id}\nStars: ${payment.total_amount}⭐\nCharge: ${payment.telegram_payment_charge_id}\n\nНужен ручной рефанд!`
+              );
             }
           }
         });
