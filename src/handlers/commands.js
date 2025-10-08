@@ -204,13 +204,25 @@ export function registerCommands(bot) {
       
       await ctx.reply(`⏳ Выполняю рефанд ${tx.stars_paid}⭐ для @${targetUser.username}...`);
       
-      // Делаем рефанд
-      console.log('[Refund] Calling refundStarPayment:', {
+      // Делаем рефанд через raw API (Telegraf 4.15 не поддерживает refundStarPayment)
+      console.log('[Refund] Calling refundStarPayment via raw API:', {
         userId: targetUser.telegram_id,
         chargeId: tx.telegram_charge_id
       });
       
-      await ctx.telegram.refundStarPayment(parseInt(targetUser.telegram_id), tx.telegram_charge_id);
+      const refundResp = await fetch(`https://api.telegram.org/bot${config.telegram.token}/refundStarPayment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: parseInt(targetUser.telegram_id),
+          telegram_payment_charge_id: tx.telegram_charge_id
+        })
+      });
+      
+      const refundData = await refundResp.json();
+      if (!refundData.ok) {
+        throw new Error(`Refund API failed: ${JSON.stringify(refundData)}`);
+      }
       
       console.log('[Refund] Refund successful');
       

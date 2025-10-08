@@ -209,9 +209,20 @@ export function registerPaymentHandlers(bot) {
               }
             }
             
-            // Рефанд при ошибке
+            // Рефанд при ошибке (через raw API, Telegraf 4.15 не поддерживает refundStarPayment)
             try {
-              await ctx.telegram.refundStarPayment(userId, payment.telegram_payment_charge_id);
+              const refundResp = await fetch(`https://api.telegram.org/bot${config.telegram.token}/refundStarPayment`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  user_id: userId,
+                  telegram_payment_charge_id: payment.telegram_payment_charge_id
+                })
+              });
+              const refundData = await refundResp.json();
+              if (!refundData.ok) {
+                throw new Error(`Refund failed: ${JSON.stringify(refundData)}`);
+              }
               await ctx.reply(`${MESSAGES.generationFailed(err.message || 'unknown')}\n\n${MESSAGES.paymentRefunded(payment.total_amount)}\n\n🔄 Попробуй ещё раз: /generate`);
               
               // Уведомляем админа об ошибке и рефанде
