@@ -267,6 +267,14 @@ async function handleSoraPrompt(ctx, user) {
     const enhanced = await enhancePromptWithCookbook(text, language);
     console.log('[Sora] Enhanced prompt length:', enhanced.length);
     
+    // Проверка на policy violation
+    if (enhanced.includes('POLICY_VIOLATION')) {
+      await DB.updateUser(user.telegram_id, { sora_pending_mode: null });
+      return ctx.reply(language === 'en' 
+        ? '🚫 This prompt violates content policy. Please try a different idea.'
+        : '🚫 Этот промпт нарушает правила контента. Попробуй другой сюжет.');
+    }
+    
     // Сохраняем оба варианта для выбора
     await DB.updateUser(user.telegram_id, { 
       sora_original_prompt: text,

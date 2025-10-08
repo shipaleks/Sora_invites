@@ -51,7 +51,7 @@ export async function enhancePromptWithCookbook(userPrompt, language = 'ru') {
   // Simplified prompt enhancement - avoid overly technical details that cause Sora API errors
   const enhancementPrompt = `You are a Sora 2 video prompt expert. Transform the user's idea into a clear, cinematic Sora 2 prompt in ENGLISH.
 
-USER INPUT (translate if Russian):
+USER INPUT (translate scene/action to English, but PRESERVE any dialogue in original language):
 "${userPrompt}"
 
 TASK: Write a 80-150 word Sora 2 prompt in ENGLISH with:
@@ -65,16 +65,23 @@ TASK: Write a 80-150 word Sora 2 prompt in ENGLISH with:
 3. CAMERA & ACTION (2-3 sentences): Framing, movement, what happens
    Example: "Medium shot, slow dolly-in. Camera at cat-eye level. The cat spins twice, pauses, looks at camera with a playful expression."
 
-4. SOUND (1 short phrase, optional): Background audio cues
+4. DIALOGUE (if present): Keep original language (Russian/English)
+   Example: Dialogue: Character says "Привет, как дела?"
+
+5. SOUND (1 short phrase, optional): Background audio cues
    Example: "Soft paw taps on wood, distant music"
+
+CRITICAL SAFETY CHECK:
+- REJECT if input contains: graphic violence, sexual content, children in unsafe situations, self-harm, hate speech, illegal activities
+- If unsafe, return EXACTLY: "POLICY_VIOLATION"
+- Otherwise proceed with enhancement
 
 RULES:
 - Keep it SIMPLE and CLEAR - avoid ultra-technical jargon
 - ONE main action that fits 4-8 seconds
-- NO policy violations (violence, NSFW, children at risk)
-- If bad input, return: "This prompt violates policy. Try a different idea."
+- Preserve dialogue in original language
 
-OUTPUT: Just the enhanced English prompt, no explanations.`;
+OUTPUT: Just the enhanced English prompt (with preserved dialogue if any), no explanations.`;
 
   const body = {
     model: 'gpt-5-mini',

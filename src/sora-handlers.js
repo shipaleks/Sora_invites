@@ -30,20 +30,22 @@ export async function executeSoraGeneration(ctx, user, promptToUse, isEnhanced) 
       // Выберем вертикаль по умолчанию
       width = 1024; height = 1792;
     } else if (user.sora_pending_mode === 'constructor') {
-      // Простейший парсер параметров конструктора
-      // Пример: "8с, Pro Max, 9:16, промпт ..."
-      const text = promptToUse;
-      const secondsMatch = text.match(/(4|8|12)\s*с/i);
-      duration = secondsMatch ? parseInt(secondsMatch[1]) : 4;
-      const qualityMatch = /pro\s*max/i.test(text) ? 'proMax' : 'lite';
-      const ratioMatch = /(9\s*:\s*16|16\s*:\s*9)/i.exec(text);
-      const vertical = ratioMatch ? /9\s*:\s*16/i.test(ratioMatch[1]) : true;
-      if (qualityMatch === 'proMax') {
-        model = 'sora-2-pro';
+      // Используем параметры из кнопок
+      duration = user.sora_custom_duration || 4;
+      const quality = user.sora_custom_quality || 'basic';
+      const orientation = user.sora_custom_orientation || '16:9';
+      
+      model = quality === 'pro' ? 'sora-2-pro' : 'sora-2';
+      
+      if (orientation === '9:16') {
+        width = 1024; height = 1792;
+      } else {
+        width = 1792; height = 1024;
       }
-      if (vertical) { width = 1024; height = 1792; } else { width = 1792; height = 1024; }
-      // Цена (эмулируем списание)
-      starsToCharge = 0; // админ-тест: не списываем реально
+      
+      // Цена по формуле
+      const rate = quality === 'pro' ? config.pricing.constructor.baseRatePerSecond.proMax : config.pricing.constructor.baseRatePerSecond.lite;
+      starsToCharge = Math.ceil((duration * rate) / 50) * 50;
     }
 
     // 3) Списываем звёзды (эмуляция)

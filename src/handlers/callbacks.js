@@ -762,8 +762,76 @@ Up to ${usageCount} people will register thanks to you! 🎉`
     if (userId !== config.telegram.adminId) return;
     const user = await DB.getUser(userId);
     const MESSAGES = getMessages(user?.language || 'ru');
-    await ctx.reply('⚙️ Конструктор (тест): отправь в одном сообщении параметры, пример:\n"8с, Pro Max, 9:16, промпт .... [опционально ссылка на изображение]"');
-    await DB.updateUser(userId, { sora_pending_mode: 'constructor' });
+    await ctx.reply('⚙️ **Кастом-конструктор**\n\nШаг 1/4: Выбери длительность', {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [[
+          { text: '4 секунды', callback_data: 'custom_dur_4' },
+          { text: '8 секунд', callback_data: 'custom_dur_8' },
+          { text: '12 секунд', callback_data: 'custom_dur_12' }
+        ]]
+      }
+    });
+  });
+
+  // Custom: duration choice
+  bot.action(/^custom_dur_(\d+)$/, async (ctx) => {
+    await ctx.answerCbQuery();
+    const userId = ctx.from.id;
+    if (userId !== config.telegram.adminId) return;
+    const duration = parseInt(ctx.match[1]);
+    await DB.updateUser(userId, { sora_custom_duration: duration });
+    await ctx.reply('⚙️ **Кастом-конструктор**\n\nШаг 2/4: Выбери качество', {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [[
+          { text: 'Обычный (sora-2)', callback_data: 'custom_quality_basic' },
+          { text: 'HD (sora-2-pro)', callback_data: 'custom_quality_pro' }
+        ]]
+      }
+    });
+  });
+
+  // Custom: quality choice
+  bot.action(/^custom_quality_(basic|pro)$/, async (ctx) => {
+    await ctx.answerCbQuery();
+    const userId = ctx.from.id;
+    if (userId !== config.telegram.adminId) return;
+    const quality = ctx.match[1];
+    await DB.updateUser(userId, { sora_custom_quality: quality });
+    await ctx.reply('⚙️ **Кастом-конструктор**\n\nШаг 3/4: Выбери ориентацию', {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [[
+          { text: '📱 Вертикаль (9:16)', callback_data: 'custom_orient_9:16' },
+          { text: '🖥 Горизонталь (16:9)', callback_data: 'custom_orient_16:9' }
+        ]]
+      }
+    });
+  });
+
+  // Custom: orientation choice
+  bot.action(/^custom_orient_(.+)$/, async (ctx) => {
+    await ctx.answerCbQuery();
+    const userId = ctx.from.id;
+    if (userId !== config.telegram.adminId) return;
+    const orientation = ctx.match[1];
+    const user = await DB.getUser(userId);
+    const MESSAGES = getMessages(user?.language || 'ru');
+    
+    await DB.updateUser(userId, { 
+      sora_custom_orientation: orientation,
+      sora_pending_mode: 'constructor'
+    });
+    
+    const dur = user.sora_custom_duration || 4;
+    const qual = user.sora_custom_quality || 'basic';
+    const price = config.pricing.constructor.baseRatePerSecond[qual === 'pro' ? 'proMax' : 'lite'] * dur;
+    const roundedPrice = Math.ceil(price / 50) * 50;
+    
+    await ctx.reply(`⚙️ **Кастом-конструктор**\n\nШаг 4/4: Отправь промпт\n\n📊 Параметры:\n• Длительность: ${dur}с\n• Качество: ${qual === 'pro' ? 'HD (sora-2-pro)' : 'Обычный (sora-2)'}\n• Ориентация: ${orientation}\n• Цена: ${roundedPrice}⭐\n\n${MESSAGES.promptAsk}`, {
+      parse_mode: 'Markdown'
+    });
   });
 
   // === Sora prompt choice ===
