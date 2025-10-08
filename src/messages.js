@@ -11,7 +11,9 @@ const MESSAGES = {
 
 ⚠️ **Важно:** Для активации инвайта нужен американский VPN!
 
-Нажми на кнопку ниже, чтобы получить инвайт 👇`,
+💡 **Новинка:** Генерация видео прямо в боте — доступна Pro версия (обычно $100/мес)!
+
+Выбери действие 👇`,
 
     rules: (codesRequired) => `📜 **Правила:**
 
@@ -122,7 +124,7 @@ const MESSAGES = {
 /start → "Отправить коды"`;
     },
 
-    addedToQueue: (position, poolSize, avgWaitHours) => {
+    addedToQueue: (position, poolSize, avgWaitHours, showGenerateOption) => {
       // Расчёт примерного времени ожидания на основе реальной статистики
       let waitTime = '';
       
@@ -159,6 +161,8 @@ const MESSAGES = {
         }
       }
       
+      const generateHint = showGenerateOption ? `\n\n💡 **Не хочешь ждать?**\nСгенерируй видео прямо сейчас — доступна Pro версия (у OpenAI $100/мес, у нас от 100⭐)\n\n👉 /generate` : '';
+      
       return `✅ **Ты добавлен в очередь!**
 
 📊 **Твоя позиция:** #${position}
@@ -168,6 +172,7 @@ ${waitTime}
 ${poolSize > 0 
   ? `🚀 Твоя очередь подойдет скоро! Как только освободится код, я сразу тебе отправлю.` 
   : `⏳ Пул пока пуст, но скоро появятся новые коды от участников.`}
+${generateHint}
 
 ⚠️ **Важно:** Если найдёшь код раньше в другом месте — пожалуйста, верни неиспользованный код обратно через кнопку "Вернуть неиспользованный инвайт" в /start! Это поможет другим получить доступ быстрее.
 
@@ -243,6 +248,7 @@ ${poolSize > queueSize
 
     buttons: {
       wantInvite: '🎫 Хочу инвайт',
+      generateVideo: '🎬 Генерация видео',
       agree: '✅ Понятно, согласен',
       cancel: '❌ Отказаться',
       shareCode: '📤 Поделиться кодом',
@@ -485,7 +491,9 @@ Send the code that SORA gave YOU (different from ${code})`
 
 ⚠️ **Important:** You need a US VPN to activate the invite!
 
-Click the button below to get an invite 👇`,
+💡 **New:** Generate videos right in the bot — Pro version available (normally $100/mo)!
+
+Choose action 👇`,
 
     rules: (codesRequired) => `📜 **Rules:**
 
@@ -594,7 +602,7 @@ Without your help the system can't work! 🙏
 /start → "Submit Codes"`;
     },
 
-    addedToQueue: (position, poolSize, avgWaitHours) => {
+    addedToQueue: (position, poolSize, avgWaitHours, showGenerateOption) => {
       // Calculate estimated wait time based on real statistics
       let waitTime = '';
       
@@ -631,6 +639,8 @@ Without your help the system can't work! 🙏
         }
       }
       
+      const generateHint = showGenerateOption ? `\n\n💡 **Don't want to wait?**\nGenerate video right now — Pro version available (OpenAI charges $100/mo, we start from 100⭐)\n\n👉 /generate` : '';
+      
       return `✅ **You've been added to the queue!**
 
 📊 **Your position:** #${position}
@@ -640,6 +650,7 @@ ${waitTime}
 ${poolSize > 0 
   ? `🚀 Your turn will come soon! As soon as a code becomes available, I'll send it to you right away.` 
   : `⏳ The pool is empty for now, but new codes from participants will appear soon.`}
+${generateHint}
 
 ⚠️ **Important:** If you find a code elsewhere before your turn — please return the unused code via "Return Unused Invite" button in /start! This will help others get access faster.
 
@@ -716,6 +727,7 @@ Head of Research at Yandex Search & AI`,
 
     buttons: {
       wantInvite: '🎫 Want Invite',
+      generateVideo: '🎬 Generate Video',
       agree: '✅ I Agree',
       cancel: '❌ Cancel',
       shareCode: '📤 Share Code',
