@@ -172,6 +172,17 @@ async function handleCodeSharing(ctx, user) {
     );
   }
   
+  // ЗАЩИТА: один уникальный код на пользователя (но можно делиться им несколько раз)
+  const previousCodes = user.codes_submitted || [];
+  if (previousCodes.length > 0 && !previousCodes.includes(code)) {
+    return ctx.reply(
+      `❌ Ты уже поделился другим кодом: \`${previousCodes[0]}\`\n\n` +
+      `Можно делиться только ОДНИМ кодом (но несколько раз, если у тебя есть дополнительные использования).\n\n` +
+      `Это защита от троллей, которые вкидывают фейковые коды.`,
+      { parse_mode: 'Markdown' }
+    );
+  }
+  
   try {
     // Сохраняем код для выбора количества использований
     await DB.updateUser(user.telegram_id, {
@@ -229,6 +240,17 @@ async function handleDonation(ctx, user) {
     return ctx.reply('❌ Похоже, это невалидный код. Код должен состоять из 6 букв/цифр.', {
       parse_mode: 'Markdown'
     });
+  }
+  
+  // ЗАЩИТА: один уникальный код на пользователя (для donations тоже)
+  const previousCodes = user.codes_submitted || [];
+  if (previousCodes.length > 0 && !previousCodes.includes(first)) {
+    return ctx.reply(
+      `❌ Ты уже поделился другим кодом: \`${previousCodes[0]}\`\n\n` +
+      `Можно делиться только ОДНИМ кодом (но несколько раз).\n\n` +
+      `Это защита от троллей.`,
+      { parse_mode: 'Markdown' }
+    );
   }
   
   try {
