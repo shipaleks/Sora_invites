@@ -814,19 +814,24 @@ async function handleAdminStat(ctx) {
     // ========== АКТИВНОСТЬ ПОСЛЕДНИХ 7 ДНЕЙ ==========
     const now = new Date();
     const last7DaysActivity = {};
+    const tzOffset = now.getTimezoneOffset() * 60000; // offset in ms
+    
     for (let i = 6; i >= 0; i--) {
-      const date = new Date(now);
+      const date = new Date(now - tzOffset); // Local timezone
       date.setDate(date.getDate() - i);
       const dayKey = date.toISOString().split('T')[0];
       last7DaysActivity[dayKey] = { invites: 0, returns: 0 };
     }
     
+    console.log('[AdminStat] Collecting activity for days:', Object.keys(last7DaysActivity));
+    
     allUsers.forEach(u => {
       // Инвайты
       if (u.invite_sent_at) {
         const date = u.invite_sent_at.toDate ? u.invite_sent_at.toDate() : new Date(u.invite_sent_at);
-        const dayKey = date.toISOString().split('T')[0];
-        if (last7DaysActivity[dayKey]) {
+        const localDate = new Date(date.getTime() - tzOffset);
+        const dayKey = localDate.toISOString().split('T')[0];
+        if (last7DaysActivity[dayKey] !== undefined) {
           last7DaysActivity[dayKey].invites++;
         }
       }
@@ -834,12 +839,15 @@ async function handleAdminStat(ctx) {
       // Возвраты (используем последнее обновление как прокси)
       if (u.codes_returned > 0 && u.requested_at) {
         const date = u.requested_at.toDate ? u.requested_at.toDate() : new Date(u.requested_at);
-        const dayKey = date.toISOString().split('T')[0];
-        if (last7DaysActivity[dayKey]) {
+        const localDate = new Date(date.getTime() - tzOffset);
+        const dayKey = localDate.toISOString().split('T')[0];
+        if (last7DaysActivity[dayKey] !== undefined) {
           last7DaysActivity[dayKey].returns++;
         }
       }
     });
+    
+    console.log('[AdminStat] Activity collected:', last7DaysActivity);
     
     // ========== РАСПРЕДЕЛЕНИЕ ПО ИСПОЛЬЗОВАНИЯМ ==========
     const usageDistribution = {
