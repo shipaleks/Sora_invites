@@ -65,6 +65,9 @@ export function registerTextHandlers(bot) {
       if (text.startsWith('/clearlock ')) {
         return handleClearLock(ctx, text);
       }
+      if (text === '/fixwebhook') {
+        return handleFixWebhook(ctx, bot);
+      }
       // /refunduser теперь в commands.js
       // Остальные команды админа (start, stats, help, language, generate, refunduser) - пропускаем в commands.js
     }
@@ -1247,5 +1250,31 @@ From 100⭐
   } finally {
     // Освобождаем лок через 30 сек после завершения
     setTimeout(() => DB.releaseLock('announce_videos'), 30000);
+  }
+}
+
+async function handleFixWebhook(ctx, bot) {
+  try {
+    await ctx.reply('🔧 Пересоздаю webhook и очищаю pending updates...');
+    
+    // 1. Удаляем текущий webhook
+    await bot.telegram.deleteWebhook({ drop_pending_updates: true });
+    console.log('[FixWebhook] Webhook deleted, pending updates dropped');
+    
+    // 2. Ждём 2 секунды
+    await new Promise(r => setTimeout(r, 2000));
+    
+    // 3. Устанавливаем заново
+    const domain = config.app.webhookDomain.replace(/\/+$/, '');
+    const webhookUrl = `https://${domain}/webhook`;
+    await bot.telegram.setWebhook(webhookUrl);
+    console.log('[FixWebhook] Webhook set:', webhookUrl);
+    
+    // 4. Проверяем
+    const info = await bot.telegram.getWebhookInfo();
+    return ctx.reply(`✅ Webhook пересоздан\n\nURL: ${info.url}\nPending: ${info.pending_update_count}\nLast error: ${info.last_error_message || 'нет'}`);
+  } catch (error) {
+    console.error('[FixWebhook] Error:', error);
+    return ctx.reply(`❌ Ошибка: ${error.message}`);
   }
 }
