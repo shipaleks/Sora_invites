@@ -5,6 +5,31 @@ import { extractCodes, validateInviteCode, validateSoraPrompt } from '../utils/v
 import { enhancePromptWithCookbook, createSoraVideo, pollSoraVideo, soraQueue, Stars } from '../sora.js';
 import { pluralize } from '../utils/helpers.js';
 
+// Импорт функции триггера из callbacks (будет определена там)
+async function triggerSingleDistribution(telegram, code) {
+  try {
+    const nextUser = await DB.getNextInQueue();
+    if (!nextUser) return;
+    const user = await DB.getUser(nextUser.telegram_id);
+    if (!user) return;
+    const MESSAGES = getMessages(user.language || 'ru');
+    await telegram.sendMessage(nextUser.telegram_id, MESSAGES.singleInviteSentNew(code), {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [[
+          { text: MESSAGES.buttons.markUsed, callback_data: `mark_used_${code}` },
+          { text: MESSAGES.buttons.markUnused, callback_data: `mark_unused_${code}` },
+          { text: MESSAGES.buttons.markInvalid, callback_data: `mark_invalid_${code}` }
+        ]]
+      }
+    });
+    await DB.addPendingInvites(nextUser.telegram_id, [code]);
+    await DB.removeFromQueue(nextUser.telegram_id);
+  } catch (error) {
+    console.error('[Trigger] Distribution failed:', error.message);
+  }
+}
+
 export function registerTextHandlers(bot) {
   bot.on('text', async (ctx) => {
     const userId = ctx.from.id;
@@ -187,27 +212,47 @@ async function handleCodeSharing(ctx, user) {
   }
   
   try {
-    // Сохраняем код для выбора количества использований
+    // НОВАЯ МЕХАНИКА: автоматом берём все 4 использования
+    const addedCount = await DB.addCodesToPoolWithLimit(code, user.telegram_id, 4);
+    
+    if (addedCount === 0) {
+      const msg = user.language === 'en'
+        ? '❌ This code has already been added to the pool'
+        : '❌ Этот код уже был добавлен в пул';
+      return ctx.reply(msg);
+    }
+    
+    // Обновляем статус пользователя
     await DB.updateUser(user.telegram_id, {
-      pending_code: code,
-      awaiting_usage_choice: true,
-      awaiting_share: false // Сбрасываем флаг
+      codes_returned: 1,
+      codes_submitted: [code],
+      awaiting_share: false,
+      usage_count_shared: (user.usage_count_shared || 0) + addedCount,
+      status: 'completed',
+      access_locked: false // Разблокируем доступ к генерации
     });
     
-    // Получаем актуальные данные для мотивации
-    const uniqueCodes = await DB.getUniqueCodesCount();
-    const currentQueueSize = await DB.getQueueSize();
+    const msg = user.language === 'en'
+      ? `✅ Code received: \`${code}\`\n\nAdding to pool (all 4 uses).\n\nThanks! 🙏\n\n🎬 Video generation unlocked → /generate`
+      : `✅ Код получен: \`${code}\`\n\nОтправляю в пул (все 4 использования).\n\nСпасибо! 🙏\n\n🎬 Генерация видео разблокирована → /generate`;
     
-    await ctx.reply(MESSAGES.chooseUsageCount(code, uniqueCodes, currentQueueSize), {
-      parse_mode: 'Markdown',
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: MESSAGES.buttons.usage2, callback_data: 'usage_2' }],
-          [{ text: MESSAGES.buttons.usage3, callback_data: 'usage_3' }],
-          [{ text: MESSAGES.buttons.usage4, callback_data: 'usage_4' }]
-        ]
-      }
-    });
+    await ctx.reply(msg, { parse_mode: 'Markdown' });
+    
+    // Уведомление админу
+    try {
+      await ctx.telegram.sendMessage(
+        config.telegram.adminId,
+        `✅ Код получен от @${user.username}:\nКод: ${code}\nИспользований: 4 (добавлено ${addedCount} раз)`
+      );
+    } catch (error) {
+      console.error('Admin notification failed:', error.message);
+    }
+    
+    // Триггер: раздать 4 людям из очереди
+    for (let i = 0; i < Math.min(addedCount, 4); i++) {
+      await triggerSingleDistribution(ctx.telegram, code);
+      await new Promise(r => setTimeout(r, 500)); // Задержка между раздачами
+    }
   } catch (error) {
     console.error('Error processing code:', error);
     await ctx.reply('❌ Ошибка. Попробуй ещё раз.');

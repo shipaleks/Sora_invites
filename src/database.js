@@ -42,7 +42,10 @@ export const DB = {
       invites_received_count: 0, // Счётчик полученных инвайтов (макс 2)
       invalid_codes_reported: [], // Коды на которые пожаловался
       is_banned: false, // Забанен за недобросовестное поведение
-      ban_reason: null // Причина бана
+      ban_reason: null, // Причина бана
+      invites_pending: [], // Новое: [{code, sent_at, status: 'pending'|'used'|'returned'|'invalid'}]
+      migration_batch: false, // Новое: из большой раздачи?
+      access_locked: false // Новое: заблокирован доступ к генерации (пока не вернёт коды)
     };
 
     await db.collection('users').doc(String(telegramId)).set(userData);
@@ -574,6 +577,42 @@ export const DB = {
         videos_generated: [...(data.videos_generated || []), videoId],
         videos_remaining: Math.max(0, (data.videos_remaining || 0) - 1)
       });
+    });
+  },
+
+  // === MIGRATION BATCH (новая система) ===
+  async addPendingInvites(telegramId, codes) {
+    const invites = codes.map(code => ({
+      code,
+      sent_at: new Date(),
+      status: 'pending'
+    }));
+    
+    await this.updateUser(telegramId, {
+      invites_pending: invites,
+      migration_batch: true,
+      access_locked: true // Блокируем доступ до отметки результата
+    });
+  },
+
+  async markInviteStatus(telegramId, code, status) {
+    const user = await this.getUser(telegramId);
+    if (!user || !user.invites_pending) return false;
+    
+    const updated = user.invites_pending.map(inv => 
+      inv.code === code ? { ...inv, status, marked_at: new Date() } : inv
+    );
+    
+    await this.updateUser(telegramId, {
+      invites_pending: updated
+    });
+    
+    return true;
+  },
+
+  async unlockAccess(telegramId) {
+    await this.updateUser(telegramId, {
+      access_locked: false
     });
   }
 };

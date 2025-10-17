@@ -757,6 +757,12 @@ Up to ${usageCount} people will register thanks to you! 🎉`
       return ctx.reply(msg);
     }
     
+    // НОВОЕ: Проверка access_locked
+    if (user?.access_locked) {
+      const MESSAGES = getMessages(user?.language || 'ru');
+      return ctx.reply(MESSAGES.accessLockedWarning, { parse_mode: 'Markdown' });
+    }
+    
     const MESSAGES = getMessages(user?.language || 'ru');
     
     const introText = user?.language === 'en'
@@ -938,4 +944,140 @@ Up to ${usageCount} people will register thanks to you! 🎉`
       ? '✏️ Okay, send a new prompt.'
       : '✏️ Хорошо, отправь новый промпт.');
   });
+
+  // === НОВАЯ СИСТЕМА: Отметки кодов ===
+  
+  // Использовал код
+  bot.action(/^mark_used_(.+)$/, async (ctx) => {
+    await ctx.answerCbQuery();
+    const userId = ctx.from.id;
+    const code = ctx.match[1];
+    const user = await DB.getUser(userId);
+    const MESSAGES = getMessages(user?.language || 'ru');
+    
+    await DB.markInviteStatus(userId, code, 'used');
+    
+    // Устанавливаем ожидание кодов от Sora
+    await DB.updateUser(userId, {
+      awaiting_codes: true,
+      status: 'received',
+      invite_code_given: code
+    });
+    
+    await ctx.reply(MESSAGES.codeMarkedUsed, { parse_mode: 'Markdown' });
+  });
+
+  // Вернуть код (не нужен)
+  bot.action(/^mark_unused_(.+)$/, async (ctx) => {
+    await ctx.answerCbQuery();
+    const userId = ctx.from.id;
+    const code = ctx.match[1];
+    const user = await DB.getUser(userId);
+    const MESSAGES = getMessages(user?.language || 'ru');
+    
+    await DB.markInviteStatus(userId, code, 'returned');
+    
+    // Возвращаем код в пул
+    await DB.addCodesToPoolWithLimit(code, `returned:${userId}`, 1);
+    
+    // Проверяем: вернул ли все коды
+    const updatedUser = await DB.getUser(userId);
+    const allReturned = updatedUser.invites_pending?.every(inv => 
+      inv.status === 'returned' || inv.status === 'invalid'
+    );
+    
+    if (allReturned) {
+      await DB.unlockAccess(userId);
+      await ctx.reply(MESSAGES.allCodesReturned, { parse_mode: 'Markdown' });
+    } else {
+      await ctx.reply(MESSAGES.codeMarkedReturned, { parse_mode: 'Markdown' });
+    }
+    
+    // Триггер: раздать этот код 1 человеку из очереди
+    triggerSingleDistribution(ctx.telegram, code);
+  });
+
+  // Код не работает
+  bot.action(/^mark_invalid_(.+)$/, async (ctx) => {
+    await ctx.answerCbQuery();
+    const userId = ctx.from.id;
+    const code = ctx.match[1];
+    const user = await DB.getUser(userId);
+    const MESSAGES = getMessages(user?.language || 'ru');
+    
+    await DB.markInviteStatus(userId, code, 'invalid');
+    
+    // Добавляем в blacklist (помечаем все записи этого кода)
+    const admin = await import('firebase-admin');
+    const db = admin.default.firestore();
+    const poolEntries = await db.collection('invite_pool').where('code', '==', code).get();
+    const batch = db.batch();
+    poolEntries.forEach(doc => {
+      batch.update(doc.ref, { blacklisted: true, blacklisted_at: new Date() });
+    });
+    if (!poolEntries.empty) await batch.commit();
+    
+    await ctx.reply(MESSAGES.codeMarkedInvalid, { parse_mode: 'Markdown' });
+  });
+
+  // Не использовал ни один
+  bot.action('mark_none_used', async (ctx) => {
+    await ctx.answerCbQuery();
+    const userId = ctx.from.id;
+    const user = await DB.getUser(userId);
+    const MESSAGES = getMessages(user?.language || 'ru');
+    
+    if (!user || !user.invites_pending) return;
+    
+    // Возвращаем все pending коды в пул
+    for (const inv of user.invites_pending) {
+      if (inv.status === 'pending') {
+        await DB.markInviteStatus(userId, inv.code, 'returned');
+        await DB.addCodesToPoolWithLimit(inv.code, `returned:${userId}`, 1);
+        // Триггер раздачи
+        triggerSingleDistribution(ctx.telegram, inv.code);
+      }
+    }
+    
+    await DB.unlockAccess(userId);
+    await ctx.reply(MESSAGES.allCodesReturned, { parse_mode: 'Markdown' });
+  });
+}
+
+// Триггер: раздать 1 код следующему в очереди
+async function triggerSingleDistribution(telegram, code) {
+  try {
+    const nextUser = await DB.getNextInQueue();
+    if (!nextUser) {
+      console.log(`[Trigger] No one in queue for code ${code}`);
+      return;
+    }
+    
+    const user = await DB.getUser(nextUser.telegram_id);
+    if (!user) return;
+    
+    const MESSAGES = getMessages(user.language || 'ru');
+    
+    // Отправляем 1 код с кнопками
+    await telegram.sendMessage(nextUser.telegram_id, MESSAGES.singleInviteSentNew(code), {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: MESSAGES.buttons.markUsed, callback_data: `mark_used_${code}` },
+            { text: MESSAGES.buttons.markUnused, callback_data: `mark_unused_${code}` },
+            { text: MESSAGES.buttons.markInvalid, callback_data: `mark_invalid_${code}` }
+          ]
+        ]
+      }
+    });
+    
+    // Обновляем БД
+    await DB.addPendingInvites(nextUser.telegram_id, [code]);
+    await DB.removeFromQueue(nextUser.telegram_id);
+    
+    console.log(`[Trigger] Sent code ${code} to @${user.username}`);
+  } catch (error) {
+    console.error('[Trigger] Distribution failed:', error.message);
+  }
 }

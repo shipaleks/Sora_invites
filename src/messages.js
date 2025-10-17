@@ -73,18 +73,41 @@ const MESSAGES = {
 Отправь код → выберешь сколько использований поделиться (1-4).`;
     },
 
-    chooseUsageCount: (code, uniqueCodes, queueSize) => `✅ Код: \`${code}\`
+    multipleInvitesSent: (codes) => {
+      const codesList = codes.map((c, i) => `${i + 1}️⃣ \`${c}\``).join('\n');
+      return `🎉 **Твои инвайт-коды для Sora:**
 
-**Сколько человек пригласить?**
+${codesList}
 
-⚠️ **Сейчас в пуле:** ${uniqueCodes} ${uniqueCodes === 1 ? 'уникальный код' : 'уникальных кода'}
+**Что делать:**
+1. Попробуй коды по очереди на sora.com (нужен VPN 🇺🇸)
+2. Один сработает — отметь его кнопкой ✅
+3. После регистрации вернись и отправь свой код из Sora
 
-💡 **Почему важно делиться больше:**
-Система работает только если отдают БОЛЬШЕ чем берут. Сейчас ~50% людей халявят и ничего не возвращают.
+⚠️ **Пока не отметишь результат — доступ к генерации видео закрыт.**
 
-🙏 Рекомендую **3-4 использования** - система критически нуждается!
+Отметь результат для каждого кода:`;
+    },
 
-Выбери:`,
+    singleInviteSentNew: (code) => `🎉 **Твой инвайт:**
+
+\`${code}\`
+
+**Что делать:**
+1. Включи VPN 🇺🇸
+2. Зарегистрируйся на sora.com
+3. В Sora появится твой код (⋮ → Invite Friends)
+4. Вернись и отправь его сюда
+
+📨 Вернёшь код → доступ к генерации видео!
+
+Отметь результат:`,
+
+    chooseUsageCount: (code, uniqueCodes, queueSize) => `✅ Код получен: \`${code}\`
+
+Отправляю в пул (все 4 использования).
+
+Спасибо! 🙏`,
 
     codesReceived: (totalCodes) => `✅ Готово!
 
@@ -260,8 +283,58 @@ ${generateHint}
       usage4: '4 человека (отдам всё)',
       codeWorks: '✅ Код работает',
       codeInvalid: '❌ Код не работает',
-      rohanAnswers: '⚔️ И РОХАН ЯВИТСЯ!'
+      rohanAnswers: '⚔️ И РОХАН ЯВИТСЯ!',
+      markUsed: '✅ Использовал',
+      markUnused: '↩️ Вернуть',
+      markInvalid: '🚫 Не работает',
+      noneUsed: '🤷 Не использовал ни один'
     },
+
+    codeMarkedUsed: `✅ Отлично!
+
+Теперь в Sora у тебя есть свой код (4 использования).
+
+📨 **Отправь его сюда:**
+→ Веб: ⋮ → Invite Friends → Copy
+→ Приложение: "4 invites" → Share
+
+Как только отправишь → доступ к генерации разблокируется! 🎬`,
+
+    codeMarkedReturned: `↩️ Код возвращён в пул.
+
+Отметь результат для остальных кодов или нажми "Не использовал ни один".`,
+
+    codeMarkedInvalid: `🚫 Отмечено. Этот код больше не будет предлагаться другим.
+
+Попробуй остальные коды.`,
+
+    allCodesReturned: `✅ Все коды возвращены в пул.
+
+Если найдёшь инвайт в другом месте — отлично!
+
+Доступ к генерации видео открыт → /generate`,
+
+    accessUnlocked: `🎉 Доступ к генерации видео открыт!
+
+Теперь можешь создавать AI-видео → /generate
+
+Спасибо за помощь сообществу! 🙏`,
+
+    accessLockedWarning: `⚠️ Доступ к генерации временно закрыт.
+
+Чтобы разблокировать:
+→ Отметь результат для полученных инвайтов
+→ Или верни код из Sora
+
+После этого сразу откроется доступ!`,
+
+    reminderReturnCodes: `⏰ Напоминание
+
+Ты получил инвайт, но не вернул код из Sora.
+
+📨 Отправь свой код → доступ к генерации разблокируется!
+
+⋮ → Invite Friends → Copy`,
 
     shareCodePrompt: (language) => language === 'en' 
       ? `📤 **Share your code**
@@ -740,18 +813,87 @@ Head of Research at Yandex Search & AI`,
       rohanAnswers: '⚔️ AND ROHAN WILL ANSWER!'
     },
 
-    chooseUsageCount: (code, uniqueCodes, queueSize) => `✅ Code: \`${code}\`
+    multipleInvitesSent: (codes) => {
+      const codesList = codes.map((c, i) => `${i + 1}️⃣ \`${c}\``).join('\n');
+      return `🎉 **Your Sora invite codes:**
 
-**How many people to invite?**
+${codesList}
 
-⚠️ **In pool now:** ${uniqueCodes} unique code${uniqueCodes !== 1 ? 's' : ''}
+**What to do:**
+1. Try codes one by one on sora.com (need US VPN 🇺🇸)
+2. One will work — mark it with ✅
+3. After registration, come back and send your Sora code
 
-💡 **Why sharing more matters:**
-System only works if people give MORE than they take. Currently ~50% freeload and return nothing.
+⚠️ **Video generation access is locked until you mark results.**
 
-🙏 Recommend **3-4 uses** - system critically needs it!
+Mark result for each code:`;
+    },
 
-Choose:`
+    singleInviteSentNew: (code) => `🎉 **Your invite:**
+
+\`${code}\`
+
+**What to do:**
+1. Enable US VPN 🇺🇸
+2. Register on sora.com
+3. Your code will appear in Sora (⋮ → Invite Friends)
+4. Come back and send it here
+
+📨 Return code → video generation unlocked!
+
+Mark result:`,
+
+    chooseUsageCount: (code, uniqueCodes, queueSize) => `✅ Code received: \`${code}\`
+
+Adding to pool (all 4 uses).
+
+Thanks! 🙏`,
+
+    codeMarkedUsed: `✅ Great!
+
+Now you have your own code in Sora (4 uses).
+
+📨 **Send it here:**
+→ Web: ⋮ → Invite Friends → Copy
+→ App: "4 invites" → Share
+
+Once sent → generation access unlocked! 🎬`,
+
+    codeMarkedReturned: `↩️ Code returned to pool.
+
+Mark results for other codes or press "Didn't use any".`,
+
+    codeMarkedInvalid: `🚫 Marked. This code won't be offered to others.
+
+Try other codes.`,
+
+    allCodesReturned: `✅ All codes returned to pool.
+
+If you find invite elsewhere — great!
+
+Video generation access unlocked → /generate`,
+
+    accessUnlocked: `🎉 Video generation access unlocked!
+
+You can now create AI videos → /generate
+
+Thanks for helping the community! 🙏`,
+
+    accessLockedWarning: `⚠️ Video generation temporarily locked.
+
+To unlock:
+→ Mark results for received invites
+→ Or return your Sora code
+
+Access will unlock immediately!`,
+
+    reminderReturnCodes: `⏰ Reminder
+
+You got an invite but didn't return Sora code.
+
+📨 Send your code → generation access unlocked!
+
+⋮ → Invite Friends → Copy`
   ,
     // ==== Sora Generation (admin test) ====
     generateAdminIntro: `🎬 **Video generation (test, admin only)**\n\nChoose mode:`,

@@ -155,7 +155,7 @@ function startQueueProcessor(bot) {
             break;
           }
           
-          // Подбираем код, который пользователь ранее не репортил
+          // Подбираем код: не репортил + не в blacklist
           let availableCode = null;
           const candidateCodes = await DB.getAvailableCodes(10);
           if (candidateCodes.length === 0) {
@@ -164,12 +164,18 @@ function startQueueProcessor(bot) {
           }
 
           const userForCodeCheck = await DB.getUser(nextUser.telegram_id);
-          availableCode = candidateCodes.find(c => !(userForCodeCheck.invalid_codes_reported || []).includes(c.code));
+          availableCode = candidateCodes.find(c => 
+            !(userForCodeCheck.invalid_codes_reported || []).includes(c.code) &&
+            !c.blacklisted
+          );
           
           if (!availableCode) {
             // Пробуем расширить окно выбора
             const moreCandidateCodes = await DB.getAvailableCodes(100);
-            availableCode = moreCandidateCodes.find(c => !(userForCodeCheck.invalid_codes_reported || []).includes(c.code));
+            availableCode = moreCandidateCodes.find(c => 
+              !(userForCodeCheck.invalid_codes_reported || []).includes(c.code) &&
+              !c.blacklisted
+            );
           }
 
           if (!availableCode) {

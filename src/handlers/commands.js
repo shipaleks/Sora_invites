@@ -264,6 +264,12 @@ export function registerCommands(bot) {
       return ctx.reply(msg);
     }
 
+    // НОВОЕ: Проверка access_locked
+    if (user?.access_locked) {
+      const MESSAGES = getMessages(user?.language || 'ru');
+      return ctx.reply(MESSAGES.accessLockedWarning, { parse_mode: 'Markdown' });
+    }
+
     const MESSAGES = getMessages(user?.language || 'ru');
     
     const introText = user?.language === 'en'
