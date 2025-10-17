@@ -57,7 +57,7 @@ export function registerTextHandlers(bot) {
         return handleRequestHelp(ctx, bot);
       }
       if (text === '/adminstat') {
-        return handleAdminStat(ctx);
+        return handleAdminStatSimple(ctx);
       }
       if (text === '/announcevideos') {
         return handleAnnounceVideos(ctx, bot);
@@ -774,7 +774,23 @@ Click the button to help! ⬇️`
   }
 }
 
-async function handleAdminStat(ctx) {
+async function handleAdminStatSimple(ctx) {
+  // Упрощённая версия без getAllUsers() чтобы не висеть
+  try {
+    const poolSize = await DB.getPoolSize();
+    const queueSize = await DB.getQueueSize();
+    const settings = await DB.getSystemSettings();
+    
+    return ctx.reply(`📊 **Быстрая статистика**\n\nПул: ${poolSize}\nОчередь: ${queueSize}\nВсего пользователей: ${settings.total_users || 'н/д'}\n\nПолная статистика временно отключена (оптимизация).`, {
+      parse_mode: 'Markdown'
+    });
+  } catch (error) {
+    console.error('[AdminStatSimple] Error:', error);
+    return ctx.reply('❌ Ошибка получения статистики');
+  }
+}
+
+async function handleAdminStatFull_DISABLED(ctx) {
   try {
     await ctx.reply('📊 Генерирую статистику...');
     
