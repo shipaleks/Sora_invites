@@ -15,7 +15,15 @@ admin.initializeApp({
 });
 
 const db = admin.firestore();
-const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
+
+// Токен из env или аргумента
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.argv[2];
+if (!BOT_TOKEN) {
+  console.error('❌ Нужен TELEGRAM_BOT_TOKEN: либо в .env, либо как аргумент');
+  console.error('   Использование: node pilot_distribution.js [BOT_TOKEN]');
+  process.exit(1);
+}
+const bot = new Telegraf(BOT_TOKEN);
 
 const BATCH_SIZE = 500; // Пилот на 500 человек
 const CODES_PER_USER = 3;
@@ -208,14 +216,16 @@ async function pilotDistribution() {
   }
 }
 
+import readline from 'readline';
+
 function question(query) {
   return new Promise(resolve => {
-    const readline = require('readline').createInterface({
+    const rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout
     });
-    readline.question(query, answer => {
-      readline.close();
+    rl.question(query, answer => {
+      rl.close();
       resolve(answer);
     });
   });
